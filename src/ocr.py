@@ -19,7 +19,7 @@ def preprocess(_crop_rgb: np.ndarray) -> np.ndarray:
     raise NotImplementedError
 
 
-def read_digits(crop_rgb: np.ndarray) -> list[tuple[str, float]]:
+def read_digits(_crop_rgb: np.ndarray) -> list[tuple[str, float]]:
     """crop 이미지에서 숫자와 소수점만 추출한다.
 
     Args:

@@ -104,7 +104,7 @@ def _nms(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float) -> list[in
     return keep
 
 
-def _decode(output: np.ndarray, ratio: float, conf: float, nms: float) -> list:
+def _decode(output: np.ndarray, ratio: float, conf: float, nms: float, img_shape: tuple) -> list:
     """YOLOX ONNX 출력(raw)을 디코딩해 bounding box 목록을 반환한다.
 
     ONNX export 시 decode_in_inference=False 이므로 그리드 기반 디코딩이 필요하다.
@@ -134,6 +134,11 @@ def _decode(output: np.ndarray, ratio: float, conf: float, nms: float) -> list:
         pred[:, 1] + pred[:, 3] / 2,
     ], axis=1) / ratio
 
+    # 패딩 오차 등으로 박스가 이미지 밖으로 나가는 경우 클리핑
+    h, w = img_shape[:2]
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, w)
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, h)
+
     keep = _nms(boxes, scores, nms)
     # 계기판은 이미지당 1개 → 신뢰도 가장 높은 것만 반환
     return [(boxes[i], float(scores[i])) for i in keep[:1]]
@@ -154,7 +159,9 @@ def detect(img_path: str, conf: float = 0.3, nms: float = 0.45) -> tuple[np.ndar
     """
     _ensure_loaded()
     img = cv2.imread(str(img_path))
+    if img is None:
+        raise FileNotFoundError(f"이미지를 읽을 수 없음: {img_path}")
     tensor, ratio = _letterbox(img)
     input_name = _session.get_inputs()[0].name
     output = _session.run(None, {input_name: tensor})[0]
-    return img, _decode(output, ratio, conf, nms)
+    return img, _decode(output, ratio, conf, nms, img.shape)
