@@ -1,0 +1,20 @@
+# 가상환경
+.venv/
+
+# 모델 가중치 (런타임에 자동 다운로드됨)
+weights/
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+
+# uv 캐시
+.uv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
