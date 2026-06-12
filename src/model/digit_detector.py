@@ -11,7 +11,7 @@ import numpy as np
 from pathlib import Path
 import onnxruntime as ort
 
-from yolox_utils import letterbox, nms as _nms_fn
+from .yolox_utils import letterbox, nms as _nms_fn
 
 WEIGHTS_DIR = Path(__file__).parent.parent / "weights"
 ONNX_PATH = WEIGHTS_DIR / "digit_yolox_s.onnx"

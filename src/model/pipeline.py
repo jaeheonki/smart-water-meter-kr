@@ -11,14 +11,14 @@
 #       → [(검침값, 평균신뢰도)] 반환
 #
 # CLI 사용법:
-#   uv run python src/pipeline.py <이미지 경로>
+#   uv run python -m src.model.pipeline <이미지 경로>
 
 import sys
 import cv2
 import numpy as np
 
-from detector import detect
-from digit_detector import detect_digits
+from .detector import detect
+from .digit_detector import detect_digits
 
 # 시도할 회전 방향 — 계량기가 기울어진 경우 대비
 _ROTATIONS = {
