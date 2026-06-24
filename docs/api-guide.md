@@ -1,8 +1,8 @@
 # Smart Water Meter API 사용 가이드
 
-Base URL: `http://<서버 IP>:8000`
+Base URL: `http://13.60.96.17:8000`
 
-Swagger UI (브라우저에서 직접 테스트 가능): `http://<서버 IP>:8000/docs`
+Swagger UI (브라우저에서 직접 테스트 가능): `http://13.60.96.17:8000/docs`
 
 ---
 
