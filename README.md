@@ -46,11 +46,28 @@ docs/
 # 의존성 설치
 uv sync
 
-# 서버 실행
+# 서버 실행 (개발용 — 코드 변경 시 자동 재시작)
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Swagger UI: `http://localhost:8000/docs`
+
+## 서버 실행 (EC2 백그라운드)
+
+```bash
+# 백그라운드 실행 — 터미널 닫아도 유지됨
+nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+
+# 서버 종료
+kill $(lsof -t -i:8000)
+
+# 재시작
+kill $(lsof -t -i:8000)
+nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+
+# 로그 확인
+tail -f nohup.out
+```
 
 ---
 
