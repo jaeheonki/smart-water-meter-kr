@@ -1,0 +1,108 @@
+# POST /meter/scan — 이미지 촬영 후 검침값 인식 (DB 저장 안 함)
+# POST /meter/manual — 확정된 검침값 저장 + 요금 계산
+#
+# 흐름:
+#   scan:   UploadFile → 임시 파일 저장 → pipeline.run(path) → ScanResponse
+#   manual: ManualRequest + X-Device-ID → Reading 저장 → calc() → ManualResponse
+#
+# 기기별 분리: _get_device_id()가 X-Device-ID 헤더를 추출해 device_id로 사용
+
+import os
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import Session, select
+
+from src.api.db import get_session
+from src.api.models import Reading, Settings
+from src.api.routers.settings import _get_device_id
+from src.api.schemas import ManualRequest, ManualResponse, ScanResponse, map_calc_result
+from src.calculation import calc
+from src.model import pipeline
+
+router = APIRouter()
+
+
+@router.post("/meter/scan", response_model=ScanResponse)
+async def post_scan(image: UploadFile = File(...)):
+    """이미지를 YOLO 파이프라인으로 분석해 검침값을 반환한다. DB에 저장하지 않는다.
+
+    앱은 이 결과를 사용자에게 보여준 뒤 확정 시 /meter/manual을 호출한다.
+    """
+    # pipeline.run()은 파일 경로를 받으므로 업로드 이미지를 임시 파일에 저장
+    suffix = Path(image.filename or "meter.jpg").suffix or ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(await image.read())
+        tmp_path = tmp.name
+
+    try:
+        results = pipeline.run(tmp_path)
+    finally:
+        os.unlink(tmp_path)
+
+    if not results:
+        return ScanResponse(success=False)
+
+    reading_str, confidence = results[0]
+    try:
+        reading_m3 = float(reading_str)
+    except (ValueError, TypeError):
+        return ScanResponse(success=False)
+
+    return ScanResponse(success=True, reading_m3=reading_m3, confidence=confidence)
+
+
+@router.post("/meter/manual", response_model=ManualResponse)
+def post_manual(
+    body: ManualRequest,
+    device_id: str = Depends(_get_device_id),
+    session: Session = Depends(get_session),
+):
+    """확정된 검침값을 DB에 저장하고 이전 기록과의 차이로 요금을 계산한다.
+
+    - 첫 검침이거나 지역 미설정이면 first_reading=True, 요금·환경 필드는 null.
+    - 두 번째 검침부터 지역이 설정되어 있으면 사용량·요금·CO2 계산 후 반환.
+    """
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # SQLite는 naive datetime 저장
+
+    # 이전 검침 기록 조회 (현재 기기의 가장 최근)
+    prev = session.exec(
+        select(Reading)
+        .where(Reading.device_id == device_id)
+        .order_by(Reading.recorded_at.desc())
+    ).first()
+
+    # 새 검침 저장
+    reading = Reading(
+        device_id=device_id,
+        reading_m3=body.reading_m3,
+        confidence=body.confidence,
+        input_mode=body.input_mode,
+        recorded_at=now,
+    )
+    session.add(reading)
+    session.commit()
+    session.refresh(reading)
+
+    # 지역 설정 조회
+    settings_row = session.get(Settings, device_id)
+    region = settings_row.region if settings_row else None
+
+    # 첫 검침이거나 지역 미설정이면 계산 없이 반환
+    if not prev or not region:
+        return ManualResponse(reading_m3=body.reading_m3, recorded_at=now, first_reading=True)
+
+    # 요금 계산 — curr > prev 위반 시 422
+    try:
+        result = calc(region, prev.reading_m3, body.reading_m3)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return ManualResponse(
+        reading_m3=body.reading_m3,
+        recorded_at=now,
+        first_reading=False,
+        **map_calc_result(result),
+    )

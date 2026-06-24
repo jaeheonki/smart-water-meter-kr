@@ -14,18 +14,19 @@
 import gdown
 import numpy as np
 from pathlib import Path
+from typing import cast
 import onnxruntime as ort
 
 from .yolox_utils import load_image_bgr, letterbox, nms as _nms_fn
 
-WEIGHTS_DIR = Path(__file__).parent.parent / "weights"
+WEIGHTS_DIR = Path(__file__).parent.parent.parent / "weights"
 ONNX_PATH = WEIGHTS_DIR / "meter_yolox_s.onnx"
 DATA_PATH = WEIGHTS_DIR / "meter_yolox_s.onnx.data"
 
 ONNX_FILE_ID = "18i9UnaiA4hSfrgcGuaWyxB2mBt7ND-2L"
 DATA_FILE_ID = "1hhRgc6A1Q5rTAJKZuz2LTcI82-5jeg0V"
 
-_session = None
+_session: ort.InferenceSession | None = None
 
 
 def _download_weights():
@@ -44,8 +45,9 @@ def _ensure_loaded():
     if not ONNX_PATH.exists() or not DATA_PATH.exists():
         _download_weights()
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-    _session = ort.InferenceSession(str(ONNX_PATH), providers=providers)
-    print(f"계량기 검출 모델 로드 완료 (provider: {_session.get_providers()[0]})")
+    sess = ort.InferenceSession(str(ONNX_PATH), providers=providers)
+    print(f"계량기 검출 모델 로드 완료 (provider: {sess.get_providers()[0]})")
+    _session = sess
 
 
 def _decode(output: np.ndarray, ratio: float, conf: float, nms: float, img_shape: tuple) -> list:
@@ -94,8 +96,9 @@ def detect(img_path: str, conf: float = 0.3, nms: float = 0.45) -> tuple[np.ndar
             dets: [(xyxy_array, score)] — 최대 1개
     """
     _ensure_loaded()
+    assert _session is not None
     img = load_image_bgr(str(img_path))
     tensor, ratio = letterbox(img)
     input_name = _session.get_inputs()[0].name
-    output = _session.run(None, {input_name: tensor})[0]
+    output = cast(np.ndarray, _session.run(None, {input_name: tensor})[0])
     return img, _decode(output, ratio, conf, nms, img.shape)

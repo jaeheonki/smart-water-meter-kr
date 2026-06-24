@@ -1,0 +1,15 @@
+.venv/
+.git/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+weights/
+data/
+docs/
+tests/
+*.md
+.gitignore
+pyrightconfig.json
+data.db
