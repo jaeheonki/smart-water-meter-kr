@@ -39,6 +39,8 @@ async def post_scan(image: UploadFile = File(...)):
 
     try:
         results = pipeline.run(tmp_path)
+    except Exception:
+        return ScanResponse(success=False)
     finally:
         os.unlink(tmp_path)
 
