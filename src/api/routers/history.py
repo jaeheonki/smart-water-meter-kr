@@ -1,5 +1,5 @@
 # GET /history — 기기의 전체 검침 이력을 구간별로 계산해 반환 (최신 구간이 먼저)
-# GET /history/period — 특정 YYYY-MM 범위의 구간만 필터링해 반환
+# GET /history/period — 특정 YYYY-MM-DD 범위의 구간만 필터링해 반환
 #
 # 흐름:
 #   Reading 목록(시간 오름차순) → calc_history(region, [(label, value), ...])
@@ -35,7 +35,7 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
     if len(readings) < 2 or not region:
         return []
 
-    labeled = [(r.recorded_at.strftime("%Y-%m"), r.reading_m3) for r in readings]
+    labeled = [(r.recorded_at.strftime("%Y-%m-%d"), r.reading_m3) for r in readings]
     periods = calc_history(region, labeled)
 
     items = [
@@ -53,12 +53,12 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
 
 @router.get("/history/period", response_model=list[HistoryItem])
 def get_history_period(
-    start: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
-    end: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    start: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
     device_id: str = Depends(_get_device_id),
     session: Session = Depends(get_session),
 ):
-    """start~end(YYYY-MM) 범위 내에 완전히 속하는 구간만 반환한다."""
+    """start~end(YYYY-MM-DD) 범위 내에 완전히 속하는 구간만 반환한다."""
     items = _compute(session, device_id)
     return [i for i in items if start <= i.start_label and i.end_label <= end]
 

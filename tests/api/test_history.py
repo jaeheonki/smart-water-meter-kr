@@ -46,8 +46,8 @@ def test_history_two_readings(client, session):
     client.put("/settings", json={"region": "seoul"}, headers=HEADERS_A)
     items = client.get("/history", headers=HEADERS_A).json()
     assert len(items) == 1
-    assert items[0]["start_label"] == "2026-01"
-    assert items[0]["end_label"] == "2026-02"
+    assert items[0]["start_label"] == "2026-01-15"
+    assert items[0]["end_label"] == "2026-02-15"
     assert items[0]["usage_m3"] == 23.0
     assert items[0]["bill_total"] > 0
     assert items[0]["co2_kg"] > 0
@@ -61,9 +61,9 @@ def test_history_most_recent_first(client, session):
     client.put("/settings", json={"region": "seoul"}, headers=HEADERS_A)
     items = client.get("/history", headers=HEADERS_A).json()
     assert len(items) == 2
-    assert items[0]["start_label"] == "2026-02"  # 최신 구간
-    assert items[0]["end_label"] == "2026-03"
-    assert items[1]["start_label"] == "2026-01"  # 이전 구간
+    assert items[0]["start_label"] == "2026-02-15"  # 최신 구간
+    assert items[0]["end_label"] == "2026-03-15"
+    assert items[1]["start_label"] == "2026-01-15"  # 이전 구간
 
 
 def test_history_no_region(client, session):
@@ -90,18 +90,18 @@ def test_history_period_filter(client, session):
     _r(session, "device-A", 1060.0, 2026, 4)
     client.put("/settings", json={"region": "seoul"}, headers=HEADERS_A)
 
-    items = client.get("/history/period?start=2026-02&end=2026-03", headers=HEADERS_A).json()
+    items = client.get("/history/period?start=2026-02-15&end=2026-03-15", headers=HEADERS_A).json()
     assert len(items) == 1
-    assert items[0]["start_label"] == "2026-02"
-    assert items[0]["end_label"] == "2026-03"
+    assert items[0]["start_label"] == "2026-02-15"
+    assert items[0]["end_label"] == "2026-03-15"
 
 
 def test_history_period_invalid_format(client):
-    """YYYY-MM 형식이 아니면 422."""
-    resp = client.get("/history/period?start=2026-1&end=2026-06", headers=HEADERS_A)
+    """YYYY-MM-DD 형식이 아니면 422."""
+    resp = client.get("/history/period?start=2026-01&end=2026-06", headers=HEADERS_A)
     assert resp.status_code == 422
 
 
 def test_history_period_missing_header(client):
     """X-Device-ID 헤더 없으면 400."""
-    assert client.get("/history/period?start=2026-01&end=2026-06").status_code == 400
+    assert client.get("/history/period?start=2026-01-01&end=2026-06-30").status_code == 400
