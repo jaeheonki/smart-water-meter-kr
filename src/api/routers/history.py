@@ -30,9 +30,9 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
     ).all()
 
     settings_row = session.get(Settings, device_id)
-    region = settings_row.region if settings_row else None
+    region = (settings_row.region if settings_row else None) or "seoul"
 
-    if len(readings) < 2 or not region:
+    if len(readings) < 2:
         return []
 
     labeled = [(r.recorded_at.strftime("%Y-%m-%d"), r.reading_m3) for r in readings]

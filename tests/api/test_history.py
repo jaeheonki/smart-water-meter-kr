@@ -66,11 +66,13 @@ def test_history_most_recent_first(client, session):
     assert items[1]["start_label"] == "2026-01-15"  # 이전 구간
 
 
-def test_history_no_region(client, session):
-    """지역 미설정이면 빈 리스트."""
+def test_history_no_region_defaults_to_seoul(client, session):
+    """지역 미설정이면 서울 기준으로 계산한다."""
     _r(session, "device-A", 1000.0, 2026, 1)
     _r(session, "device-A", 1023.0, 2026, 2)
-    assert client.get("/history", headers=HEADERS_A).json() == []
+    items = client.get("/history", headers=HEADERS_A).json()
+    assert len(items) == 1
+    assert items[0]["bill_total"] > 0
 
 
 def test_history_missing_header(client):

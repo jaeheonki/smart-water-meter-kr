@@ -29,9 +29,10 @@ def get_settings(
     device_id: str = Depends(_get_device_id),
     session: Session = Depends(get_session),
 ):
-    """현재 기기의 지역 설정을 반환한다. 미설정이면 region=null."""
+    """현재 기기의 지역 설정을 반환한다. 미설정이면 기본값 seoul."""
     s = session.get(Settings, device_id)
-    return SettingsResponse(region=s.region if s else None)
+    region = s.region if s else None
+    return SettingsResponse(region=region or "seoul")
 
 
 @router.put("/settings", response_model=SettingsResponse)

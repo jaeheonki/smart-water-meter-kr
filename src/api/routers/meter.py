@@ -86,12 +86,12 @@ def post_manual(
     session.commit()
     session.refresh(reading)
 
-    # 지역 설정 조회
+    # 지역 설정 조회 (미설정이면 기본값 seoul)
     settings_row = session.get(Settings, device_id)
-    region = settings_row.region if settings_row else None
+    region = (settings_row.region if settings_row else None) or "seoul"
 
-    # 첫 검침이거나 지역 미설정이면 계산 없이 반환
-    if not prev or not region:
+    # 첫 검침이면 계산 없이 반환
+    if not prev:
         return ManualResponse(reading_m3=body.reading_m3, recorded_at=now, first_reading=True)
 
     # 요금 계산 — curr > prev 위반 시 422

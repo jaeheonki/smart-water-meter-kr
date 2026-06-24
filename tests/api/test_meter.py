@@ -77,8 +77,8 @@ def test_manual_with_calc(client):
     assert data["impact"] is not None
 
 
-def test_manual_no_region_no_calc(client):
-    """지역 미설정이면 두 번째 검침도 first_reading=True (계산 불가)."""
+def test_manual_no_region_defaults_to_seoul(client):
+    """지역 미설정이면 서울 기준으로 요금을 계산한다."""
     client.post("/meter/manual", json={"reading_m3": 1000.0, "input_mode": "manual"}, headers=HEADERS_A)
     resp = client.post(
         "/meter/manual",
@@ -86,7 +86,10 @@ def test_manual_no_region_no_calc(client):
         headers=HEADERS_A,
     )
     assert resp.status_code == 200
-    assert resp.json()["first_reading"] is True
+    data = resp.json()
+    assert data["first_reading"] is False
+    assert data["usage_m3"] == 23.0
+    assert data["bill"] is not None
 
 
 def test_manual_missing_header(client):

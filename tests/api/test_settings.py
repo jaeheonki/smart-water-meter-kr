@@ -8,10 +8,10 @@ HEADERS_B = {"X-Device-ID": DEVICE_B}
 
 
 def test_get_settings_initial(client):
-    # 설정 전이면 region은 null
+    # 설정 전이면 기본값 seoul
     resp = client.get("/settings", headers=HEADERS_A)
     assert resp.status_code == 200
-    assert resp.json()["region"] is None
+    assert resp.json()["region"] == "seoul"
 
 
 def test_put_settings(client):
