@@ -54,12 +54,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
 
 # 코드 clone (dev 브랜치)
-git clone -b dev https://<GitHub토큰>@github.com/jaeheonki/smart-water-meter-kr.git
+git clone -b dev https://github.com/jaeheonki/smart-water-meter-kr.git
 cd smart-water-meter-kr
 
 # 의존성 설치 (개발용 패키지 제외)
 uv sync --no-dev
 ```
+
+비공개 저장소 인증을 요청하면 GitHub 사용자명을 입력하고, 비밀번호 입력란에는 Personal Access Token을 입력한다. 토큰이 셸 기록이나 `.git/config`에 남지 않도록 clone URL에는 토큰을 포함하지 않는다.
 
 ---
 
