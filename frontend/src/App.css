@@ -1,0 +1,70 @@
+/* 기기 프레임 없이 전체 화면을 채우는 방울이 앱 스타일 */
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    background: linear-gradient(180deg, #BJDDF5 0%, #D6ECFA 100%);
+    background: linear-gradient(180deg, #BDDDF5 0%, #DCEFFB 60%, #CFE7F7 100%);
+    overflow: hidden;
+  }
+  #root { height: 100%; display: flex; align-items: center; justify-content: center; }
+  .jua { font-family: 'Jua', system-ui, sans-serif; }
+  .msym {
+    display: inline-block; width: 1em; height: 1em; border-radius: 50%;
+    background: currentColor; font-size: 0 !important; opacity: 0.72;
+  }
+  .bg-card {
+    background: #fff; border-radius: 20px;
+    border: 1.5px solid #E0EFFA;
+    box-shadow: 0 3px 12px rgba(46, 116, 170, 0.08);
+    box-sizing: border-box;
+  }
+  .press { transition: transform .12s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .press:active { transform: scale(0.95); }
+  .dial-btn {
+    width: 38px; height: 30px; border-radius: 10px; border: none; cursor: pointer;
+    background: #EAF5FD; display: flex; align-items: center; justify-content: center;
+  }
+  .dial-btn:hover { background: #D9EDFC; }
+  button { font-family: system-ui, sans-serif; }
+  @keyframes bobUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+  .bob { animation: bobUp 2.6s ease-in-out infinite; }
+  @keyframes walkStep { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-9px) rotate(4deg); } }
+  .walkstep { animation: walkStep 0.46s ease-in-out infinite; }
+  @keyframes ppBob { 0%,50%,100% { transform: translateY(0); } 25%,75% { transform: translateY(-4px); } }
+  @keyframes ppBreath { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes ppLegF { 0% { transform: rotate(24deg); } 50% { transform: rotate(-20deg); } 100% { transform: rotate(24deg); } }
+  @keyframes ppLegB { 0% { transform: rotate(-20deg); } 50% { transform: rotate(24deg); } 100% { transform: rotate(-20deg); } }
+  @keyframes ppArmF { 0% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } 100% { transform: rotate(-18deg); } }
+  @keyframes ppArmB { 0% { transform: rotate(18deg); } 50% { transform: rotate(-18deg); } 100% { transform: rotate(18deg); } }
+  .pp-walk { animation: ppBob .56s ease-in-out infinite; }
+  .pp-idle { animation: ppBreath 2.8s ease-in-out infinite; }
+  .pp-walk .pp-leg-f { animation: ppLegF .56s ease-in-out infinite; }
+  .pp-walk .pp-leg-b { animation: ppLegB .56s ease-in-out infinite; }
+  .pp-walk .pp-arm-f { animation: ppArmF .56s ease-in-out infinite; }
+  .pp-walk .pp-arm-b { animation: ppArmB .56s ease-in-out infinite; }
+  @keyframes popIn { 0% { transform: translateX(-50%) translateY(6px) scale(0.6); opacity: 0; } 60% { transform: translateX(-50%) translateY(-2px) scale(1.06); opacity: 1; } 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; } }
+  .popin { animation: popIn 0.34s cubic-bezier(0.34,1.56,0.64,1) both; }
+  @keyframes popInC { 0% { transform: translateY(6px) scale(0.6); opacity: 0; } 60% { transform: translateY(-2px) scale(1.06); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+  .popinc { animation: popInC 0.34s cubic-bezier(0.34,1.56,0.64,1) both; }
+  @keyframes fadeUpIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-up { animation: fadeUpIn .3s ease both; }
+  @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+  .pop { animation: popIn .5s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-up { animation: sheetUp .28s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes scanMove { 0% { top: 6%; } 50% { top: 90%; } 100% { top: 6%; } }
+  .scanline {
+    position: absolute; left: 6%; right: 6%; height: 3px; border-radius: 99px;
+    background: linear-gradient(90deg, transparent, #7BE0FF, transparent);
+    box-shadow: 0 0 14px 3px rgba(123, 224, 255, 0.55);
+    animation: scanMove 2.2s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bob, .pop, .fade-up, .scanline, .sheet-up, .pp-walk, .pp-idle, .pp-walk .pp-leg-f, .pp-walk .pp-leg-b, .pp-walk .pp-arm-f, .pp-walk .pp-arm-b { animation: none; }
+  }
+
+body { overflow: hidden; background: #f2faff; }
+#root { width: 100%; height: 100%; display: block; }
+.app-root { width: 100%; height: 100%; position: relative; background: #f2faff; }
+.app-shell { width: 100%; height: 100%; display: flex; flex-direction: column; background: #f2faff; }
+.app-content { flex: 1; min-height: 0; overflow-y: auto; }
