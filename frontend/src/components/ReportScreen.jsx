@@ -1,40 +1,56 @@
 // 기간별 물 사용을 에너지와 탄소로 환산하는 리포트 화면
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import BG from '../mockData.js'
+import { getHistory, getHistoryPeriod } from '../api.js'
+import { getPreviousDateRange, summarizeCustomHistory, summarizeHistory } from '../reportData.js'
 import { BGC, MIcon, Card, SectionLabel, Segmented, ScreenHead, Chip } from './ui.jsx'
 
 function ReportScreen({ usage, recorded, goal }) {
   const now = new Date();
-  const PERIODS = { '주간': 7, '월간': 30, '연간': 365 };
   const [period, setPeriod] = useState('월간');
   const fmtD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const _defFrom = new Date(now); _defFrom.setDate(_defFrom.getDate() - 30);
   const [from, setFrom] = useState(fmtD(_defFrom));
   const [to, setTo] = useState(fmtD(now));
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const isCustom = period === '날짜지정';
-  let winStart, winEnd, prevStart, prevEnd;
-  if (isCustom) {
-    winStart = new Date(from + 'T00:00:00');
-    winEnd = new Date(to + 'T23:59:59');
-    const span = Math.max(86400000, winEnd - winStart);
-    prevEnd = new Date(winStart);
-    prevStart = new Date(winStart.getTime() - span);
-  } else {
-    const days = PERIODS[period] || 30;
-    winEnd = now;
-    winStart = new Date(now); winStart.setDate(winStart.getDate() - days);
-    prevEnd = winStart;
-    prevStart = new Date(now); prevStart.setDate(prevStart.getDate() - days * 2);
-  }
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(false);
+    const load = async () => {
+      try {
+        if (isCustom) {
+          const previous = getPreviousDateRange(from, to);
+          const [history, previousHistory] = await Promise.all([
+            getHistoryPeriod(from, to),
+            getHistoryPeriod(previous.from, previous.to),
+          ]);
+          if (active) setSummary(summarizeCustomHistory(history, previousHistory));
+        } else {
+          const history = await getHistory();
+          if (active) setSummary(summarizeHistory(history, period));
+        }
+      } catch {
+        if (active) setError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [period, from, to, isCustom, reloadKey]);
+
   const periodLabel = isCustom ? `${from} ~ ${to}` : period;
-  const all = recorded ? [...BG.HISTORY, { date: now, liters: usage, recorded: true }] : [...BG.HISTORY];
-  const inWin = all.filter((h) => h.recorded && h.date >= winStart && h.date <= winEnd);
-  const inPrev = all.filter((h) => h.recorded && h.date >= prevStart && h.date < prevEnd);
-  const mTotal = inWin.reduce((s, h) => s + h.liters, 0);
+  const mTotal = summary?.currentTotalLiters || 0;
   const e = BG.energyOf(mTotal);
-  const curAvg = Math.round(mTotal / Math.max(1, inWin.length));
-  const prevAvg = Math.round(inPrev.reduce((s, h) => s + h.liters, 0) / Math.max(1, inPrev.length));
-  const diffPct = prevAvg ? Math.round(((prevAvg - curAvg) / prevAvg) * 1000) / 10 : 0;
+  const currentTotal = summary?.currentTotalLiters || 0;
+  const previousTotal = summary?.previousTotalLiters || 0;
+  const diffPct = previousTotal ? Math.round(((previousTotal - currentTotal) / previousTotal) * 1000) / 10 : 0;
   const pines = Math.max(1, Math.round(e.co2 / 8.8)); // 소나무 1그루 연간 흡수 ≈ 8.8kg
 
   const row = (ic, c, label, sub, v) => (
@@ -50,10 +66,8 @@ function ReportScreen({ usage, recorded, goal }) {
     </div>
   );
 
-  return (
-    <div data-screen-label="에너지 리포트" className="fade-up" style={{ padding: '0 18px 100px' }}>
-      <ScreenHead title="에너지 리포트" sub="기간을 선택해 물 사용을 에너지·탄소로 환산해 봐요"></ScreenHead>
-
+  const controls = (
+    <>
       <div style={{ margin: '10px 0 2px' }}>
         <Segmented options={['주간', '월간', '연간', '날짜지정']} value={period} onChange={setPeriod}></Segmented>
       </div>
@@ -64,6 +78,31 @@ function ReportScreen({ usage, recorded, goal }) {
           <input type="date" value={to} min={from} onChange={(ev) => setTo(ev.target.value)} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
         </div>
       )}
+    </>
+  );
+
+  if (loading || error || !summary?.currentCount) {
+    return (
+      <div data-screen-label="에너지 리포트" className="fade-up" style={{ padding: '0 18px 100px' }}>
+        <ScreenHead title="에너지 리포트" sub="기간을 선택해 물 사용을 에너지·탄소로 환산해 봐요"></ScreenHead>
+        {controls}
+        <Card style={{ marginTop: 12, textAlign: 'center', color: BGC.sub }}>
+          {loading ? '리포트를 불러오는 중이에요' : error ? (
+            <>
+              <div>리포트를 불러오지 못했습니다.</div>
+              <button type="button" onClick={() => setReloadKey((key) => key + 1)} style={{ marginTop: 10 }}>다시 시도</button>
+            </>
+          ) : '표시할 검침 이력이 없습니다.'}
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div data-screen-label="에너지 리포트" className="fade-up" style={{ padding: '0 18px 100px' }}>
+      <ScreenHead title="에너지 리포트" sub="기간을 선택해 물 사용을 에너지·탄소로 환산해 봐요"></ScreenHead>
+
+      {controls}
 
       <div style={{
         marginTop: 10, borderRadius: 24, padding: '20px 20px 18px', color: '#fff',
@@ -110,11 +149,11 @@ function ReportScreen({ usage, recorded, goal }) {
 
       <Card style={{ marginTop: 12 }}>
         <SectionLabel icon="trending_down" right={diffPct > 0 && <Chip icon="check_circle" color="#2C8A60" bg="#E8F6EF">{diffPct}% 절감</Chip>}>방울이 키우기 전후</SectionLabel>
-        {[['이전 기간 하루 평균', prevAvg, '#C9DFF0'], ['이번 기간 하루 평균', curAvg, 'linear-gradient(90deg,#7BCBFF,#2E86C9)']].map(([k, v, bg]) => (
+        {[['이전 기간 사용량', previousTotal, '#C9DFF0'], ['이번 기간 사용량', currentTotal, 'linear-gradient(90deg,#7BCBFF,#2E86C9)']].map(([k, v, bg]) => (
           <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
             <span style={{ width: 110, fontSize: 12, fontWeight: 700, color: BGC.sub }}>{k}</span>
             <div style={{ flex: 1, height: 16, borderRadius: 99, background: '#EFF6FC', overflow: 'hidden' }}>
-              <div style={{ width: (v / Math.max(prevAvg, curAvg)) * 100 + '%', height: '100%', borderRadius: 99, background: bg }}></div>
+              <div style={{ width: (v / Math.max(1, previousTotal, currentTotal)) * 100 + '%', height: '100%', borderRadius: 99, background: bg }}></div>
             </div>
             <span className="jua" style={{ fontSize: 14, color: BGC.ink, width: 44, textAlign: 'right' }}>{v}L</span>
           </div>

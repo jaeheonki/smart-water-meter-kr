@@ -5,6 +5,7 @@ import test from 'node:test'
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
+const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -42,4 +43,82 @@ test('최초 지역 저장 실패는 모달과 오류를 유지하고 같은 선
   assert.match(settings, /error\s*&&[\s\S]*지역 설정을 저장하지 못했습니다\.[\s\S]*다시 시도/)
   assert.match(settings, /<button[^>]*disabled=\{saving\}[^>]*onClick=\{\(\) => setSel\(r\)\}/)
   assert.match(settings, /disabled=\{!sel \|\| saving\}/)
+})
+
+test('리포트는 목 이력 대신 전체 및 날짜 지정 이력 API를 사용한다', () => {
+  assert.doesNotMatch(report, /BG\.HISTORY/)
+  assert.match(report, /import\s+\{\s*getHistory\s*,\s*getHistoryPeriod\s*\}\s+from\s+['"]\.\.\/api\.js['"]/)
+  assert.match(report, /getHistory\(\)/)
+  assert.match(report, /Promise\.all\(\[\s*getHistoryPeriod\(from, to\),\s*getHistoryPeriod\(previous\.from, previous\.to\),?\s*\]\)/)
+  assert.doesNotMatch(report, /하루 평균/)
+  assert.match(report, /이전 기간 사용량/)
+  assert.match(report, /이번 기간 사용량/)
+})
+
+test('리포트는 로딩, 오류 재시도, 빈 이력 상태를 제공한다', () => {
+  assert.match(report, /리포트를 불러오는 중이에요/)
+  assert.match(report, /리포트를 불러오지 못했습니다/)
+  assert.match(report, /다시 시도/)
+  assert.match(report, /표시할 검침 이력이 없습니다/)
+})
+
+test('주간 기간은 오늘을 포함한 정확히 7일과 바로 이전 7일이다', async () => {
+  const { getPeriodDateRange } = await import('../src/reportData.js')
+
+  assert.deepEqual(getPeriodDateRange('주간', new Date('2026-07-14T12:00:00')), {
+    from: '2026-07-08',
+    to: '2026-07-14',
+    previousFrom: '2026-07-01',
+    previousTo: '2026-07-07',
+  })
+})
+
+test('월간과 연간 기간은 양끝 포함 각각 정확히 30일과 365일이다', async () => {
+  const { getPeriodDateRange } = await import('../src/reportData.js')
+
+  assert.equal(getPeriodDateRange('월간', new Date('2026-07-14T12:00:00')).from, '2026-06-15')
+  assert.equal(getPeriodDateRange('연간', new Date('2026-07-14T12:00:00')).from, '2025-07-15')
+})
+
+test('기본 리포트는 기간에 완전히 포함된 구간만 API 순서와 무관하게 합산한다', async () => {
+  const { summarizeHistory } = await import('../src/reportData.js')
+  const history = [
+    { start_label: '2026-07-10', end_label: '2026-07-13', usage_m3: 2 },
+    { start_label: '2026-06-30', end_label: '2026-07-01', usage_m3: 9 },
+    { start_label: '2026-07-08', end_label: '2026-07-14', usage_m3: 1 },
+    { start_label: '2026-07-07', end_label: '2026-07-08', usage_m3: 8 },
+    { start_label: '2026-07-01', end_label: '2026-07-07', usage_m3: 4 },
+  ]
+
+  const summary = summarizeHistory(history, '주간', new Date('2026-07-14T12:00:00'))
+
+  assert.equal(summary.currentTotalLiters, 3000)
+  assert.equal(summary.previousTotalLiters, 4000)
+})
+
+test('날짜 지정의 직전 기간은 선택 기간과 양끝 포함 일수가 같다', async () => {
+  const { getPreviousDateRange } = await import('../src/reportData.js')
+
+  assert.deepEqual(getPreviousDateRange('2026-07-08', '2026-07-14'), {
+    from: '2026-07-01',
+    to: '2026-07-07',
+  })
+  assert.deepEqual(getPreviousDateRange('2026-07-14', '2026-07-14'), {
+    from: '2026-07-13',
+    to: '2026-07-13',
+  })
+})
+
+test('날짜 지정 이력은 현재와 직전 기간 총량을 리터로 합산한다', async () => {
+  const { summarizeCustomHistory } = await import('../src/reportData.js')
+  const current = [
+    { end_label: '2026-07-10', usage_m3: 0.25 },
+    { end_label: '2026-07-02', usage_m3: 1.5 },
+  ]
+  const previous = [{ end_label: '2026-06-30', usage_m3: 2 }]
+
+  const summary = summarizeCustomHistory(current, previous)
+
+  assert.equal(summary.currentTotalLiters, 1750)
+  assert.equal(summary.previousTotalLiters, 2000)
 })
