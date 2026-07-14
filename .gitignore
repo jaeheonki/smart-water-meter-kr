@@ -25,3 +25,5 @@ Thumbs.db
 # SQLite DB 데이터 (Docker 볼륨으로 관리)
 data/
 
+# 번들 복구 산출물 (원본은 Downloads의 방울이_공유용.html)
+extracted/
