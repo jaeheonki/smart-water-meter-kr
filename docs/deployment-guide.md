@@ -63,52 +63,112 @@ uv sync --no-dev
 
 ---
 
-## 5. 서버 실행 (백그라운드)
+## 5. Docker로 서버 실행
+
+**Docker 설치 및 권한 설정**
 
 ```bash
-nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+sudo apt-get update
+sudo apt-get install -y docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker ubuntu
+docker --version
+exit
 ```
 
-터미널을 닫아도 서버가 유지된다.
+`ubuntu` 사용자의 Docker 그룹 권한을 적용하려면 SSH로 다시 접속한다. 현재 서버에서 확인한 버전은 Docker 29.1.3이다.
 
-**확인**
+**기존 8000번 서버 정리 및 배포 브랜치 갱신**
+
 ```bash
-curl http://localhost:8000/regions
+kill $(lsof -t -i:8000) || true
+cd ~/smart-water-meter-kr
+git fetch origin
+git switch feature_app_merge
+git pull --ff-only origin feature_app_merge
+git rev-parse --short HEAD
 ```
 
-지역 목록이 나오면 성공.
+배포에 사용한 `feature_app_merge` HEAD는 `447efb1`이다.
+
+**이미지 빌드 및 컨테이너 실행**
+
+```bash
+mkdir -p ~/smart-water-meter-kr/weights ~/smart-water-meter-kr/data
+docker build -t water-meter-api .
+docker rm -f water-api 2>/dev/null || true
+docker run -d \
+  --name water-api \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ~/smart-water-meter-kr/weights:/app/weights \
+  -v ~/smart-water-meter-kr/data:/app/data \
+  water-meter-api
+```
+
+`weights`와 `data`는 호스트에 남으므로 이미지나 컨테이너를 교체해도 유지된다.
 
 ---
 
 ## 6. 자주 쓰는 명령어
 
-**서버 상태 확인**
+**컨테이너 상태 및 재시작 정책 확인**
+
 ```bash
-ps aux | grep uvicorn
+docker ps --filter name=water-api
+docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' water-api
 ```
 
-**서버 종료**
+재시작 정책은 `unless-stopped`여야 한다.
+
+**내부·외부 헬스체크**
+
 ```bash
-kill $(lsof -t -i:8000)
+curl -fsS http://localhost:8000/health
+curl -fsS http://13.53.120.64:8000/health
 ```
 
-**서버 재시작**
+두 요청 모두 정상 응답하면 배포가 완료된 것이다. 고정 접속 주소는 Elastic IP `13.53.120.64`이다.
+
+**컨테이너 재시작**
+
 ```bash
-kill $(lsof -t -i:8000)
-nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+docker restart water-api
 ```
 
 **코드 업데이트 후 재시작**
+
 ```bash
-git pull origin dev
-kill $(lsof -t -i:8000)
-nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+cd ~/smart-water-meter-kr
+git switch feature_app_merge
+git pull --ff-only origin feature_app_merge
+docker build -t water-meter-api .
+docker rm -f water-api
+docker run -d \
+  --name water-api \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ~/smart-water-meter-kr/weights:/app/weights \
+  -v ~/smart-water-meter-kr/data:/app/data \
+  water-meter-api
 ```
 
 **로그 확인**
+
 ```bash
-tail -f nohup.out
+docker logs -f water-api
 ```
+
+**재부팅 후 자동 복구 확인**
+
+```bash
+sudo reboot
+# 약 2분 후 SSH로 다시 접속
+docker ps --filter name=water-api
+curl -fsS http://13.53.120.64:8000/health
+```
+
+`unless-stopped` 정책으로 서버 재부팅 후 약 2분 안에 `water-api`가 자동 복구된다.
 
 ---
 
