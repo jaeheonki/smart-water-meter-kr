@@ -1,6 +1,6 @@
 // 사용자 이름과 표시 단위 및 지역을 관리하는 설정 화면과 앱 모달
 import { useState } from 'react'
-import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented } from './ui.jsx'
+import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
 function SettingsScreen({ st, patch, regions, onReplayOnboarding }) {
   const set = (k, v) => patch({ [k]: v });
