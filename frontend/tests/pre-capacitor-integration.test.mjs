@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
+const styles = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const expectedRegions = {
@@ -12,6 +14,28 @@ const expectedRegions = {
   chungbuk: '충북', chungnam: '충남', jeonju: '전주', yeosu: '여수', pohang: '포항',
   changwon: '창원', jeju: '제주',
 }
+
+test('Material Symbols와 한글 글꼴을 로드하고 아이콘 리가를 그대로 표시한다', () => {
+  assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.googleapis\.com["']\s*\/?>/)
+  assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.gstatic\.com["']\s+crossorigin\s*\/?>/)
+  assert.match(index, /<link\s+href=["']https:\/\/fonts\.googleapis\.com\/css2\?[^"']*family=Jua[^"']*family=Material\+Symbols\+Rounded[^"']*family=Noto\+Sans\+KR[^"']*display=swap["']\s+rel=["']stylesheet["']\s*\/?>/)
+
+  const iconRule = styles.match(/\.msym\s*\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(iconRule, /font-family:\s*['"]Material Symbols Rounded['"]\s*;/)
+  assert.match(iconRule, /font-weight:\s*normal\s*;/)
+  assert.match(iconRule, /font-style:\s*normal\s*;/)
+  assert.match(iconRule, /line-height:\s*1\s*;/)
+  assert.match(iconRule, /letter-spacing:\s*normal\s*;/)
+  assert.match(iconRule, /text-transform:\s*none\s*;/)
+  assert.match(iconRule, /white-space:\s*nowrap\s*;/)
+  assert.match(iconRule, /word-wrap:\s*normal\s*;/)
+  assert.match(iconRule, /direction:\s*ltr\s*;/)
+  assert.match(iconRule, /font-feature-settings:\s*['"]liga['"]\s*;/)
+  assert.match(iconRule, /-webkit-font-smoothing:\s*antialiased\s*;/)
+  assert.doesNotMatch(iconRule, /border-radius\s*:/)
+  assert.doesNotMatch(iconRule, /background\s*:/)
+  assert.doesNotMatch(iconRule, /font-size:\s*0(?:\s*!important)?\s*;/)
+})
 
 test('공유 지역 매핑은 17개 한글 라벨을 API 코드로 변환한다', async () => {
   const { REGION_LABELS, getRegionCode } = await import('../src/regions.js')
