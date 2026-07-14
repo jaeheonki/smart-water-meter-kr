@@ -1,33 +1,57 @@
 // 주간과 월간 물 사용 이력을 보여주는 가계부 화면
-import React, { useState } from 'react'
-import BG from '../mockData.js'
+import React, { useEffect, useState } from 'react'
+import { getHistory } from '../api.js'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead, Chip } from './ui.jsx'
 
-function monthEntries(usage, recorded) {
-  const now = new Date();
-  const list = BG.HISTORY.filter((h) => h.date.getMonth() === now.getMonth() && h.date.getFullYear() === now.getFullYear());
-  if (recorded) list.push({ date: now, liters: usage, recorded: true, isToday: true });
-  return list;
-}
+function LedgerScreen({ goal, onNav, unit }) {
+  const [mode, setMode] = useState('주간')
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-function LedgerScreen({ usage, recorded, goal, onNav, unit, tariff }) {
-  const [mode, setMode] = useState('주간');
-  const fmtV = (liters) => (unit === '원' ? '₩' + Math.round(liters * (tariff || 1)).toLocaleString() : liters.toLocaleString() + 'L');
-  const now = new Date();
-  const week = BG.HISTORY.slice(-6).concat([{ date: now, liters: recorded ? usage : 0, recorded, isToday: true }]);
-  const maxL = Math.max(goal, ...week.map((w) => w.liters)) * 1.12;
-  const month = monthEntries(usage, recorded);
-  const mRec = month.filter((m) => m.recorded);
-  const mTotal = mRec.reduce((s, m) => s + m.liters, 0);
-  const mHit = mRec.filter((m) => m.liters <= goal).length;
+  const loadHistory = async () => {
+    setLoading(true)
+    setError(false)
+    try {
+      setHistory(await getHistory())
+    } catch {
+      setHistory([])
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const rowChip = (h) => {
-    if (!h.recorded) return <Chip color="#93A9BA" bg="#EFF4F8">미기록</Chip>;
-    const d = goal - h.liters;
-    return d >= 0
-      ? <Chip icon="check_circle" color="#2C8A60" bg="#E8F6EF">-{d}L 절약</Chip>
-      : <Chip icon="error" color="#C26A1B" bg="#FDEFD9">+{-d}L 초과</Chip>;
-  };
+  useEffect(() => { loadHistory() }, [])
+
+  const entries = history.map((item) => ({
+    ...item,
+    date: new Date(`${item.end_label}T00:00:00`),
+    liters: Math.round(item.usage_m3 * 1000),
+  }))
+  const week = entries.slice(0, 7)
+  const chart = [...week].reverse()
+  const maxL = Math.max(goal, ...week.map((item) => item.liters)) * 1.12
+  const now = new Date()
+  const month = entries.filter((item) => item.date.getMonth() === now.getMonth() && item.date.getFullYear() === now.getFullYear())
+  const mTotal = month.reduce((sum, item) => sum + item.liters, 0)
+  const mBill = month.reduce((sum, item) => sum + item.bill_total, 0)
+  const mHit = month.filter((item) => item.liters <= goal).length
+  const fmtV = (item) => unit === '원' ? `₩${item.bill_total.toLocaleString()}` : `${item.liters.toLocaleString()}L`
+
+  const stateCard = loading ? (
+    <Card><div style={{ textAlign: 'center', color: BGC.sub }}>검침 이력을 불러오는 중입니다.</div></Card>
+  ) : error ? (
+    <Card>
+      <div style={{ textAlign: 'center', color: BGC.sub }}>검침 이력을 불러오지 못했습니다.</div>
+      <PrimaryBtn icon="refresh" onClick={loadHistory} style={{ marginTop: 12 }}>다시 시도</PrimaryBtn>
+    </Card>
+  ) : history.length === 0 ? (
+    <Card>
+      <div style={{ textAlign: 'center', color: BGC.sub }}>검침 기록이 2개 이상 쌓이면 사용량이 표시됩니다</div>
+      <PrimaryBtn icon="photo_camera" onClick={() => onNav('camera')} style={{ marginTop: 12 }}>기록</PrimaryBtn>
+    </Card>
+  ) : null
 
   return (
     <div data-screen-label="물 가계부" className="fade-up" style={{ padding: '0 18px 100px' }}>
@@ -36,62 +60,42 @@ function LedgerScreen({ usage, recorded, goal, onNav, unit, tariff }) {
         <Segmented options={['주간', '월간']} value={mode} onChange={setMode}></Segmented>
       </div>
 
-      {mode === '주간' ? (
+      {stateCard || (mode === '주간' ? (
         <React.Fragment>
           <Card>
-            <SectionLabel icon="bar_chart" right={<Chip color={BGC.skyDeep}>목표 {goal}L</Chip>}>최근 7일</SectionLabel>
+            <SectionLabel icon="bar_chart" right={<Chip color={BGC.skyDeep}>목표 {goal}L</Chip>}>최근 7개 구간</SectionLabel>
             <div style={{ position: 'relative', height: 168, marginTop: 6 }}>
               <div style={{ position: 'absolute', left: 0, right: 0, bottom: 26 + (goal / maxL) * 130, borderTop: '2px dashed #AFD4EE' }}></div>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                {week.map((w, i) => {
-                  const h = w.recorded ? Math.max(10, (w.liters / maxL) * 130) : 8;
-                  const today = !!w.isToday;
-                  const over = w.liters > goal;
+                {chart.map((item, index) => {
+                  const over = item.liters > goal
                   return (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span className="jua" style={{ fontSize: 11, color: w.recorded ? (over ? '#C26A1B' : BGC.skyDeep) : '#A9C0D2' }}>
-                        {w.recorded ? w.liters : '–'}
-                      </span>
+                    <div key={`${item.start_label}-${item.end_label}-${index}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span className="jua" style={{ fontSize: 11, color: over ? '#C26A1B' : BGC.skyDeep }}>{item.liters.toLocaleString()}</span>
                       <div style={{
-                        width: '74%', height: h, borderRadius: '8px 8px 4px 4px',
-                        background: !w.recorded ? '#E4EEF6'
-                          : today ? 'linear-gradient(180deg,#6FD6AE,#2C8A60)'
-                          : over ? 'linear-gradient(180deg,#FFC46B,#F5894F)'
-                          : 'linear-gradient(180deg,#7BCBFF,#2E86C9)',
-                        border: today ? '1.5px solid #1F7A52' : 'none',
+                        width: '74%', height: Math.max(10, (item.liters / maxL) * 130), borderRadius: '8px 8px 4px 4px',
+                        background: over ? 'linear-gradient(180deg,#FFC46B,#F5894F)' : 'linear-gradient(180deg,#7BCBFF,#2E86C9)',
                       }}></div>
-                      <span style={{ fontSize: 10.5, fontWeight: today ? 800 : 600, color: today ? BGC.ink : BGC.sub }}>
-                        {today ? '오늘' : BG.dayName(w.date)}
-                      </span>
+                      <span style={{ fontSize: 10.5, fontWeight: 600, color: BGC.sub }}>{item.date.getMonth() + 1}/{item.date.getDate()}</span>
                     </div>
-                  );
+                  )
                 })}
               </div>
             </div>
           </Card>
 
           <Card style={{ marginTop: 12 }} pad={10}>
-            {[...week].reverse().map((h, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderBottom: i < week.length - 1 ? `1px solid #EDF5FB` : 'none' }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                  background: h.recorded ? '#EAF5FD' : '#F1F5F8',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <MIcon name={h.recorded ? 'water_drop' : 'close'} size={19} color={h.recorded ? BGC.skyDeep : '#A9C0D2'}></MIcon>
+            {week.map((item, index) => (
+              <div key={`${item.start_label}-${item.end_label}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderBottom: index < week.length - 1 ? '1px solid #EDF5FB' : 'none' }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: '#EAF5FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <MIcon name="water_drop" size={19} color={BGC.skyDeep}></MIcon>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: BGC.ink }}>
-                    {h.isToday ? '오늘' : `${BG.fmtDate(h.date)} (${BG.dayName(h.date)})`}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: BGC.sub, marginTop: 1 }}>
-                    {h.recorded ? `에너지 ${BG.fmt1(BG.energyOf(h.liters).total)}kWh · CO₂ ${BG.fmt1(BG.energyOf(h.liters).co2)}kg` : h.isToday ? '계량기를 찍어주세요' : '기록이 없어요'}
-                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: BGC.ink }}>{item.start_label} ~ {item.end_label}</div>
+                  <div style={{ fontSize: 11.5, color: BGC.sub, marginTop: 1 }}>CO₂ {item.co2_kg.toLocaleString()}kg</div>
                 </div>
-                {h.recorded && <span className="jua" style={{ fontSize: 17, color: BGC.ink }}>{fmtV(h.liters)}</span>}
-                {h.isToday && !h.recorded
-                  ? <PrimaryBtn icon="photo_camera" onClick={() => onNav('camera')} style={{ width: 'auto', minHeight: 36, padding: '0 12px', fontSize: 13 }}>기록</PrimaryBtn>
-                  : rowChip(h)}
+                <span className="jua" style={{ fontSize: 17, color: BGC.ink }}>{fmtV(item)}</span>
+                <Chip color={item.liters <= goal ? '#2C8A60' : '#C26A1B'} bg={item.liters <= goal ? '#E8F6EF' : '#FDEFD9'}>{item.liters <= goal ? '달성' : '초과'}</Chip>
               </div>
             ))}
           </Card>
@@ -101,10 +105,10 @@ function LedgerScreen({ usage, recorded, goal, onNav, unit, tariff }) {
           <Card>
             <SectionLabel icon="calendar_month">{now.getMonth() + 1}월 사용 요약</SectionLabel>
             <div style={{ display: 'flex', textAlign: 'center' }}>
-              {[['누적 사용', unit === '원' ? fmtV(mTotal) : (mTotal / 1000).toFixed(2) + '㎥'], ['목표 달성', mHit + '일'], ['하루 평균', fmtV(Math.round(mTotal / Math.max(1, mRec.length)))]].map(([k, v]) => (
-                <div key={k} style={{ flex: 1 }}>
-                  <div className="jua" style={{ fontSize: 22, color: BGC.skyDeep }}>{v}</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: BGC.sub, marginTop: 2 }}>{k}</div>
+              {[["누적 사용", unit === '원' ? `₩${mBill.toLocaleString()}` : `${(mTotal / 1000).toFixed(2)}㎥`], ['목표 달성', `${mHit}회`], ['구간 평균', month.length ? `${Math.round(mTotal / month.length).toLocaleString()}L` : '0L']].map(([key, value]) => (
+                <div key={key} style={{ flex: 1 }}>
+                  <div className="jua" style={{ fontSize: 22, color: BGC.skyDeep }}>{value}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: BGC.sub, marginTop: 2 }}>{key}</div>
                 </div>
               ))}
             </div>
@@ -113,31 +117,24 @@ function LedgerScreen({ usage, recorded, goal, onNav, unit, tariff }) {
           <Card style={{ marginTop: 12 }}>
             <SectionLabel icon="grid_view">날짜별 현황</SectionLabel>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-              {month.map((m, i) => {
-                const ok = m.recorded && m.liters <= goal;
-                const over = m.recorded && m.liters > goal;
+              {month.map((item, index) => {
+                const ok = item.liters <= goal
                 return (
-                  <div key={i} style={{
-                    aspectRatio: '1', borderRadius: 10,
-                    background: ok ? '#CDE9FD' : over ? '#FDE3C8' : '#EFF4F8',
-                    border: m.isToday ? `2px solid ${BGC.skyDeep}` : 'none',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: ok ? BGC.skyDeep : over ? '#C26A1B' : '#A9C0D2' }}>{m.date.getDate()}</span>
+                  <div key={`${item.start_label}-${item.end_label}-${index}`} style={{ aspectRatio: '1', borderRadius: 10, background: ok ? '#CDE9FD' : '#FDE3C8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: ok ? BGC.skyDeep : '#C26A1B' }}>{item.date.getDate()}</span>
                   </div>
-                );
+                )
               })}
             </div>
             <div style={{ display: 'flex', gap: 7, marginTop: 12 }}>
               <Chip color={BGC.skyDeep}>달성</Chip>
               <Chip color="#C26A1B" bg="#FDEFD9">초과</Chip>
-              <Chip color="#93A9BA" bg="#EFF4F8">미기록</Chip>
             </div>
           </Card>
         </React.Fragment>
-      )}
+      ))}
     </div>
-  );
+  )
 }
 
 export default LedgerScreen

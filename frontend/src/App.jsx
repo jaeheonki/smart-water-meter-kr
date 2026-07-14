@@ -99,7 +99,7 @@ function App() {
       home: <HomeScreen app={app} />,
       ledger: <LedgerScreen usage={usage} recorded={st.recorded} goal={goal} onNav={nav} unit={unit} tariff={tariff} />,
       report: <ReportScreen usage={usage} recorded={st.recorded} goal={goal} />,
-      settings: <SettingsScreen st={st} patch={patch} regions={Object.keys(REGION_TARIFF)} onReplayOnboarding={replayOnboarding} />,
+      settings: <SettingsScreen st={st} patch={patch} onReplayOnboarding={replayOnboarding} />,
       shop: <ShopScreen coins={st.coins} owned={st.owned} equipped={st.equipped} placed={st.placed}
         onBuy={(id, price) => patch({ coins: st.coins - price, owned: [...st.owned, id] })}
         onEquip={(id) => patch({ equipped: id })}

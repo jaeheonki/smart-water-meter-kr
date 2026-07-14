@@ -1,12 +1,64 @@
 // 사용자 이름과 표시 단위 및 지역을 관리하는 설정 화면과 앱 모달
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getRegions, getSettings, saveSettings } from '../api.js'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
-function SettingsScreen({ st, patch, regions, onReplayOnboarding }) {
+const REGION_LABELS = {
+  seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
+  daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
+  chungbuk: '충북', chungnam: '충남', jeonju: '전주', yeosu: '여수', pohang: '포항',
+  changwon: '창원', jeju: '제주',
+}
+
+function SettingsScreen({ st, patch, onReplayOnboarding }) {
+  const [regionCodes, setRegionCodes] = useState([])
+  const [currentRegion, setCurrentRegion] = useState(null)
+  const [loadingRegions, setLoadingRegions] = useState(true)
+  const [regionError, setRegionError] = useState(false)
+  const [savingRegion, setSavingRegion] = useState(false)
+  const [failedRegion, setFailedRegion] = useState(null)
   const set = (k, v) => patch({ [k]: v });
   const inputStyle = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '11px 13px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: BGC.ink, background: '#fff' };
   const labelStyle = { fontSize: 12.5, fontWeight: 800, color: BGC.sub };
   const fsLabel = (st.fontScale || 1) < 1 ? '작게' : (st.fontScale || 1) > 1 ? '크게' : '보통';
+
+  const loadRegions = async () => {
+    setLoadingRegions(true)
+    setRegionError(false)
+    setFailedRegion(null)
+    try {
+      const [codes, settings] = await Promise.all([getRegions(), getSettings()])
+      const region = settings.region || 'seoul'
+      setRegionCodes(codes)
+      setCurrentRegion(region)
+      patch({ region: REGION_LABELS[region] || region })
+    } catch {
+      setRegionCodes([])
+      setRegionError(true)
+    } finally {
+      setLoadingRegions(false)
+    }
+  }
+
+  useEffect(() => { loadRegions() }, [])
+
+  const selectRegion = async (code) => {
+    setSavingRegion(true)
+    setRegionError(false)
+    setFailedRegion(null)
+    try {
+      const saved = await saveSettings(code)
+      const region = saved.region || code
+      setCurrentRegion(region)
+      patch({ region: REGION_LABELS[region] || region })
+    } catch {
+      setFailedRegion(code)
+      setRegionError(true)
+    } finally {
+      setSavingRegion(false)
+    }
+  }
+
   return (
     <div data-screen-label="설정" className="fade-up" style={{ padding: '0 18px 100px' }}>
       <ScreenHead title="설정" sub="앱을 내 취향대로 맞춰보세요"></ScreenHead>
@@ -32,18 +84,28 @@ function SettingsScreen({ st, patch, regions, onReplayOnboarding }) {
 
       <Card style={{ marginTop: 12 }}>
         <SectionLabel icon="location_on">지역</SectionLabel>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {regions.map((r) => {
-            const on = (st.region || '서울') === r;
-            return (
-              <button key={r} className="press" onClick={() => set('region', r)} style={{
-                padding: '9px 16px', borderRadius: 99, cursor: 'pointer', fontFamily: 'Jua', fontSize: 14,
-                border: on ? 'none' : `1.5px solid ${BGC.line}`,
-                background: on ? BGC.sky : '#fff', color: on ? '#fff' : BGC.sub,
-              }}>{r}</button>
-            );
-          })}
-        </div>
+        {loadingRegions ? (
+          <div style={{ color: BGC.sub }}>지역 설정을 불러오는 중입니다.</div>
+        ) : regionCodes.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {regionCodes.map((code) => {
+              const on = currentRegion === code;
+              return (
+                <button key={code} className="press" disabled={savingRegion} onClick={() => selectRegion(code)} style={{
+                  padding: '9px 16px', borderRadius: 99, cursor: savingRegion ? 'default' : 'pointer', fontFamily: 'Jua', fontSize: 14,
+                  border: on ? 'none' : `1.5px solid ${BGC.line}`,
+                  background: on ? BGC.sky : '#fff', color: on ? '#fff' : BGC.sub,
+                }}>{REGION_LABELS[code] || code}</button>
+              );
+            })}
+          </div>
+        ) : null}
+        {regionError && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: '#C26A1B' }}>지역 설정을 처리하지 못했습니다.</div>
+            <PrimaryBtn icon="refresh" onClick={failedRegion ? () => selectRegion(failedRegion) : loadRegions} style={{ marginTop: 8 }}>다시 시도</PrimaryBtn>
+          </div>
+        )}
       </Card>
 
       <Card style={{ marginTop: 12 }}>
