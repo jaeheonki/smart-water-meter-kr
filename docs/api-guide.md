@@ -84,7 +84,7 @@ image: <이미지 파일>
 ```json
 {
   "success": true,
-  "reading_m3": 12345.0,
+  "reading_m3": 234.918,
   "confidence": 0.91
 }
 ```

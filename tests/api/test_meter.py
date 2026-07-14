@@ -24,13 +24,13 @@ def _img():
 # ────────────────────────────────────────────────────────────────────────────
 
 def test_scan_success(client, monkeypatch):
-    """pipeline.run이 결과를 반환하면 success=True와 검침값을 응답한다."""
-    monkeypatch.setattr("src.model.pipeline.run", lambda path, **kw: [("12345", 0.91)])
+    """pipeline.run의 리터 단위 숫자열을 ㎥로 변환해 응답한다."""
+    monkeypatch.setattr("src.model.pipeline.run", lambda path, **kw: [("234918", 0.91)])
     resp = client.post("/meter/scan", files={"image": _img()})
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
-    assert data["reading_m3"] == 12345.0
+    assert data["reading_m3"] == 234.918
     assert abs(data["confidence"] - 0.91) < 0.001
 
 

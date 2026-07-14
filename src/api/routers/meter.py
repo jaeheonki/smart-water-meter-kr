@@ -49,7 +49,7 @@ async def post_scan(image: UploadFile = File(...)):
 
     reading_str, confidence = results[0]
     try:
-        reading_m3 = float(reading_str)
+        reading_m3 = float(reading_str) / 1000
     except (ValueError, TypeError):
         return ScanResponse(success=False)
 

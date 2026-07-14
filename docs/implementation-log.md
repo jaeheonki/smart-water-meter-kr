@@ -233,9 +233,9 @@ _db._engine = engine  # 모듈 레벨 엔진 교체 → lifespan + get_session()
 ```
 POST /meter/scan  multipart(image=...)
     → UploadFile.read() → tempfile 저장
-    → pipeline.run(tmp_path) → [("12345", 0.91)] 또는 []
-    → float("12345") = 12345.0
-    → ScanResponse(success=True, reading_m3=12345.0, confidence=0.91)
+    → pipeline.run(tmp_path) → [("234918", 0.91)] 또는 []
+    → float("234918") / 1000 = 234.918
+    → ScanResponse(success=True, reading_m3=234.918, confidence=0.91)
 ```
 
 **manual 흐름:**
