@@ -5,6 +5,10 @@
 
 import io
 
+from sqlmodel import select
+
+from src.api.models import Reading
+
 
 HEADERS_A = {"X-Device-ID": "device-A"}
 HEADERS_B = {"X-Device-ID": "device-B"}
@@ -90,6 +94,53 @@ def test_manual_no_region_defaults_to_seoul(client):
     assert data["first_reading"] is False
     assert data["usage_m3"] == 23.0
     assert data["bill"] is not None
+
+
+def test_manual_reject_decreasing_does_not_save_reading(client, session):
+    """이전값보다 작은 검침값은 거절하고 DB에 저장하지 않는다."""
+    first = client.post(
+        "/meter/manual",
+        json={"reading_m3": 1000.0, "input_mode": "manual"},
+        headers=HEADERS_A,
+    )
+    assert first.status_code == 200
+
+    resp = client.post(
+        "/meter/manual",
+        json={"reading_m3": 900.0, "input_mode": "manual"},
+        headers=HEADERS_A,
+    )
+
+    assert resp.status_code == 422
+    readings = session.exec(
+        select(Reading).where(Reading.device_id == HEADERS_A["X-Device-ID"])
+    ).all()
+    assert len(readings) == 1
+
+
+def test_manual_reject_equal_does_not_save_reading(client, session):
+    """이전값과 같은 검침값도 거절하고 DB에 저장하지 않는다."""
+    first = client.post(
+        "/meter/manual",
+        json={"reading_m3": 1000.0, "input_mode": "manual"},
+        headers=HEADERS_A,
+    )
+    assert first.status_code == 200
+
+    resp = client.post(
+        "/meter/manual",
+        json={"reading_m3": 1000.0, "input_mode": "manual"},
+        headers=HEADERS_A,
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == (
+        "당월 검침값(1000.0)이 전월(1000.0)보다 작거나 같습니다. 검침값을 확인하세요."
+    )
+    readings = session.exec(
+        select(Reading).where(Reading.device_id == HEADERS_A["X-Device-ID"])
+    ).all()
+    assert len(readings) == 1
 
 
 def test_manual_missing_header(client):
