@@ -9,6 +9,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.api.db import create_db_and_tables
 from src.api.routers import history, meter, regions, settings
 
@@ -21,6 +22,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Smart Meter API", lifespan=lifespan)
+
+# CORS — Capacitor 웹뷰(https://localhost 등)와 Vite 개발 서버(5173)의 호출 허용.
+# 쿠키 인증이 없으므로 와일드카드 허용이 안전상 문제되지 않는다. 스토어 제출 전 축소 예정.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+def health():
+    """배포 확인 및 앱의 서버 연결 점검용."""
+    return {"status": "ok"}
+
 
 # 라우터 등록 — 태스크마다 추가됨
 app.include_router(regions.router)
