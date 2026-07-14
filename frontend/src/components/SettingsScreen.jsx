@@ -1,14 +1,8 @@
 // 사용자 이름과 표시 단위 및 지역을 관리하는 설정 화면과 앱 모달
 import { useEffect, useState } from 'react'
 import { getRegions, getSettings, saveSettings } from '../api.js'
+import { REGION_LABELS } from '../regions.js'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
-
-const REGION_LABELS = {
-  seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
-  daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
-  chungbuk: '충북', chungnam: '충남', jeonju: '전주', yeosu: '여수', pohang: '포항',
-  changwon: '창원', jeju: '제주',
-}
 
 function SettingsScreen({ st, patch, onReplayOnboarding }) {
   const [regionCodes, setRegionCodes] = useState([])
@@ -160,7 +154,7 @@ function AttendanceModal({ streak, reward, onClaim }) {
   );
 }
 
-function RegionModal({ regions, onSelect }) {
+function RegionModal({ regions, onSelect, saving, error }) {
   const [sel, setSel] = useState(null);
   return (
     <ModalOverlay>
@@ -174,11 +168,12 @@ function RegionModal({ regions, onSelect }) {
           {regions.map((r) => {
             const on = sel === r;
             return (
-              <button key={r} className="press" onClick={() => setSel(r)} style={{ padding: '9px 15px', borderRadius: 99, cursor: 'pointer', fontFamily: 'Jua', fontSize: 14, border: on ? 'none' : `1.5px solid ${BGC.line}`, background: on ? BGC.sky : '#fff', color: on ? '#fff' : BGC.sub }}>{r}</button>
+              <button key={r} className="press" disabled={saving} onClick={() => setSel(r)} style={{ padding: '9px 15px', borderRadius: 99, cursor: saving ? 'default' : 'pointer', fontFamily: 'Jua', fontSize: 14, border: on ? 'none' : `1.5px solid ${BGC.line}`, background: on ? BGC.sky : '#fff', color: on ? '#fff' : BGC.sub }}>{r}</button>
             );
           })}
         </div>
-        <PrimaryBtn icon="check" disabled={!sel} onClick={() => onSelect(sel)} style={{ marginTop: 10 }}>이 지역으로 시작하기</PrimaryBtn>
+        {error && <div style={{ marginTop: 10, fontSize: 12, color: '#C26A1B', textAlign: 'center' }}>지역 설정을 저장하지 못했습니다. 다시 시도해 주세요.</div>}
+        <PrimaryBtn icon={error ? "refresh" : "check"} disabled={!sel || saving} onClick={() => onSelect(sel)} style={{ marginTop: 10 }}>{saving ? '저장 중...' : error ? '다시 시도' : '이 지역으로 시작하기'}</PrimaryBtn>
       </div>
     </ModalOverlay>
   );

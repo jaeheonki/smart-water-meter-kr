@@ -9,6 +9,8 @@ import LedgerScreen from './components/LedgerScreen.jsx'
 import ReportScreen from './components/ReportScreen.jsx'
 import ShopScreen, { SHOP_ITEMS, wornImgFor, spriteFor, framesFor, facesFor } from './components/ShopScreen.jsx'
 import SettingsScreen, { AttendanceModal, RegionModal } from './components/SettingsScreen.jsx'
+import { saveSettings } from './api.js'
+import { getRegionCode } from './regions.js'
 import './App.css'
 
 const STORE_KEY = 'banguli_app_v1'
@@ -31,6 +33,8 @@ function loadState() {
 function App() {
   const [st, setSt] = useState(loadState)
   const [showAttend, setShowAttend] = useState(false)
+  const [savingInitialRegion, setSavingInitialRegion] = useState(false)
+  const [initialRegionError, setInitialRegionError] = useState(false)
 
   useEffect(() => {
     const today = new Date().toDateString()
@@ -53,6 +57,23 @@ function App() {
 
   const patch = (value) => setSt((state) => ({ ...state, ...value }))
   const nav = (screen) => patch({ screen })
+  const selectInitialRegion = async (region) => {
+    const code = getRegionCode(region)
+    if (!code) {
+      setInitialRegionError(true)
+      return
+    }
+    setSavingInitialRegion(true)
+    setInitialRegionError(false)
+    try {
+      await saveSettings(code)
+      patch({ region, regionSet: true })
+    } catch {
+      setInitialRegionError(true)
+    } finally {
+      setSavingInitialRegion(false)
+    }
+  }
   const replayOnboarding = () => {
     setSt((previous) => {
       const keep = { coins: previous.coins, owned: previous.owned, equipped: previous.equipped }
@@ -119,7 +140,7 @@ function App() {
   return (
     <div className="app-root">
       {content}
-      {!st.regionSet && <RegionModal regions={Object.keys(REGION_TARIFF)} onSelect={(region) => patch({ region, regionSet: true })} />}
+      {!st.regionSet && <RegionModal regions={Object.keys(REGION_TARIFF)} saving={savingInitialRegion} error={initialRegionError} onSelect={selectInitialRegion} />}
       {showAttend && st.regionSet && st.onboarded && (
         <AttendanceModal streak={streak} reward={5} onClaim={() => { patch({ coins: st.coins + 5, lastAttend: new Date().toDateString() }); setShowAttend(false) }} />
       )}

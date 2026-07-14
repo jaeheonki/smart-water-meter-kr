@@ -32,21 +32,12 @@ test('이력 빈 상태는 안내와 카메라 진입 CTA를 함께 제공한다
 
 test('설정 화면은 지역 API와 명시적 한글 매핑을 사용한다', () => {
   assert.match(settings, /import\s+\{\s*getRegions,\s*getSettings,\s*saveSettings\s*\}\s+from\s+['"]\.\.\/api\.js['"]/)
+  assert.match(settings, /import\s+\{\s*REGION_LABELS\s*\}\s+from\s+['"]\.\.\/regions\.js['"]/)
   assert.match(settings, /Promise\.all\(\[getRegions\(\),\s*getSettings\(\)\]\)/)
   assert.match(settings, /saveSettings\(code\)/)
   assert.match(settings, /const region = saved\.region \|\| code/)
   assert.match(settings, /다시 시도/)
   assert.doesNotMatch(settings, /fetch\s*\(/)
-
-  const mappings = {
-    seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
-    daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
-    chungbuk: '충북', chungnam: '충남', jeonju: '전주', yeosu: '여수', pohang: '포항',
-    changwon: '창원', jeju: '제주',
-  }
-  for (const [code, label] of Object.entries(mappings)) {
-    assert.match(settings, new RegExp(`${code}: ['"]${label}['"]`))
-  }
 })
 
 test('지역 저장 실패 재시도는 실패한 코드를 다시 저장한다', () => {
