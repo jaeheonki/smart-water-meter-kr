@@ -1,6 +1,8 @@
 // 계량기 촬영과 OCR 보정 및 수동 입력 흐름을 제공하는 화면
 import React, { useEffect, useState } from 'react'
 import BG from '../mockData.js'
+import { getPhoto } from '../camera.js'
+import { scanMeter, saveReading, ApiError } from '../api.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
 function MeterFace({ digits, scale = 1 }) {
@@ -67,22 +69,63 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
   const sc = BG.SCENARIOS[scenario];
   const [step, setStep] = useState(startStep || 'view'); // view → scan → confirm → done
   const [digits, setDigits] = useState(sc.digits.split('').map(Number));
+  const [confidence, setConfidence] = useState(null);
+  const [saveResult, setSaveResult] = useState(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const flaggedIdx = 4;
 
   useEffect(() => { setDigits(sc.digits.split('').map(Number)); }, [scenario]);
-  useEffect(() => {
-    if (step !== 'scan') return;
-    const id = setTimeout(() => setStep('confirm'), 1600);
-    return () => clearTimeout(id);
-  }, [step]);
 
   const reading = parseInt(digits.join(''), 10);
-  const usage = reading - BG.METER_YESTERDAY;
-  const valid = usage > 0 && usage < 5000;
+  const readingM3 = reading / 1000;
+  const usage = saveResult?.usage_m3 == null ? reading - BG.METER_YESTERDAY : Math.round(saveResult.usage_m3 * 1000);
+  const valid = reading > 0;
   const e = BG.energyOf(Math.max(0, usage));
   const saved = goal - usage;
   const reward = valid ? (saved >= 0 ? 12 : 2) : 0;
   const savedEnergy = Math.abs(saved) * BG.PER_LITER_KWH;
+
+  const capture = async () => {
+    setError('');
+    setStep('scan');
+    try {
+      const file = await getPhoto();
+      const scan = await scanMeter(file);
+      if (!scan.success) {
+        setConfidence(null);
+        setStep('manual');
+        return;
+      }
+      const nextDigits = Math.round(scan.reading_m3 * 1000).toString().padStart(7, '0').slice(-7);
+      setDigits(nextDigits.split('').map(Number));
+      setConfidence(scan.confidence);
+      setStep('confirm');
+    } catch {
+      setError('서버에 연결할 수 없습니다. 다시 시도해주세요.');
+      setStep('view');
+    }
+  };
+
+  const confirmReading = async (inputMode) => {
+    setError('');
+    setSaving(true);
+    try {
+      const result = await saveReading({
+        reading_m3: readingM3,
+        confidence: inputMode === 'auto' ? confidence : null,
+        input_mode: inputMode,
+      });
+      setSaveResult(result);
+      setStep('done');
+    } catch (caught) {
+      setError(caught instanceof ApiError && caught.status === 422
+        ? '검침값이 이전 기록보다 작습니다. 값을 확인해주세요.'
+        : '저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const darkTop = (title) => (
     <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px' }}>
@@ -100,7 +143,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
   if (step === 'view' || step === 'scan') {
     const scanning = step === 'scan';
     return (
-        <div data-screen-label={scanning ? '촬영-인식중' : '촬영-뷰파인더'} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div data-screen-label={scanning ? '촬영-인식중' : '촬영-뷰파인더'} style={{ flex: 1, minHeight: 0, height: '100%', background: '#0E1B26', display: 'flex', flexDirection: 'column' }}>
           {darkTop('계량기 촬영')}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
             <div style={{ position: 'relative', border: '2.5px dashed rgba(255,255,255,0.45)', borderRadius: 28, padding: 30, overflow: 'hidden' }}>
@@ -132,7 +175,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
                 <button className="press" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 16, width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <MIcon name="image" size={24} color="#fff" fill={0}></MIcon>
                 </button>
-                <button className="press" onClick={() => setStep('scan')} aria-label="촬영" style={{
+                <button className="press" onClick={capture} aria-label="촬영" style={{
                   width: 78, height: 78, borderRadius: '50%', cursor: 'pointer',
                   background: '#fff', border: '5px solid rgba(255,255,255,0.35)', backgroundClip: 'padding-box',
                 }}></button>
@@ -141,8 +184,9 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>
               <MIcon name="lock" size={14} color="rgba(255,255,255,0.55)"></MIcon>
-              사진은 휴대폰 안에서만 처리되고 밖으로 전송되지 않아요
+              사진은 검침 숫자 인식을 위해 서버로 전송돼요
             </div>
+            {error && <div role="alert" style={{ color: '#FFB7AF', fontSize: 13.5, fontWeight: 700 }}>{error}</div>}
           </div>
         </div>
 );
@@ -177,16 +221,16 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
             }}>
               {valid ? (
                 <span style={{ fontSize: 14, fontWeight: 700, color: BGC.ink }}>
-                  오늘 사용량 <span className="jua" style={{ fontSize: 19, color: BGC.skyDeep }}>{usage.toLocaleString()}L</span>
-                  <span style={{ color: BGC.sub }}> = 오늘 검침 − 어제 검침</span>
+                  입력한 검침값 <span className="jua" style={{ fontSize: 19, color: BGC.skyDeep }}>{readingM3.toFixed(3)} ㎥</span>
                 </span>
               ) : (
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: BGC.red }}>어제 검침값보다 작아요 — 숫자를 다시 확인해 주세요</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: BGC.red }}>검침값을 입력해 주세요</span>
               )}
             </div>
           </Card>
 
-          <PrimaryBtn icon="check" onClick={() => valid && setStep('done')} disabled={!valid} style={{ marginTop: 14 }}>이 값으로 확정</PrimaryBtn>
+          {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
+          <PrimaryBtn icon="check" onClick={() => valid && confirmReading('manual')} disabled={!valid || saving} style={{ marginTop: 14 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
         </div>
 );
@@ -205,7 +249,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 14 }}>
-            <Chip icon="document_scanner" color={BGC.skyDeep}>OCR 신뢰도 91%</Chip>
+            <Chip icon="document_scanner" color={BGC.skyDeep}>OCR 신뢰도 {Math.round((confidence || 0) * 100)}%</Chip>
             <Chip icon="touch_app" color="#C26A1B" bg="#FDEFD9">노란 칸만 확인해 주세요</Chip>
           </div>
 
@@ -236,25 +280,39 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
             }}>
               {valid ? (
                 <span style={{ fontSize: 14, fontWeight: 700, color: BGC.ink }}>
-                  오늘 사용량 <span className="jua" style={{ fontSize: 19, color: BGC.skyDeep }}>{usage.toLocaleString()}L</span>
-                  <span style={{ color: BGC.sub }}> = 오늘 검침 − 어제 검침</span>
+                  인식한 검침값 <span className="jua" style={{ fontSize: 19, color: BGC.skyDeep }}>{readingM3.toFixed(3)} ㎥</span>
                 </span>
               ) : (
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: BGC.red }}>어제 검침값보다 작아요 — 숫자를 다시 확인해 주세요</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: BGC.red }}>검침값을 입력해 주세요</span>
               )}
             </div>
           </Card>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <GhostBtn icon="photo_camera" onClick={() => setStep('view')} style={{ flex: 1 }}>다시 찍기</GhostBtn>
-            <PrimaryBtn icon="check" onClick={() => valid && setStep('done')} disabled={!valid} style={{ flex: 1.4 }}>이 값으로 확정</PrimaryBtn>
+            <PrimaryBtn icon="check" onClick={() => valid && confirmReading('auto')} disabled={!valid || saving} style={{ flex: 1.4 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
+          {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12, color: BGC.sub, fontSize: 11.5 }}>
             <MIcon name="school" size={14} color={BGC.sub}></MIcon>
-            수정한 값은 인식 모델 학습에 활용돼 점점 똑똑해져요
+            확정한 값은 검침 기록으로 저장돼요
           </div>
         </div>
 );
+  }
+
+  if (step === 'done' && saveResult?.first_reading) {
+    return (
+      <div data-screen-label="첫 검침 저장 완료" className="fade-up" style={{ flex: 1, minHeight: 0, padding: '24px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Card style={{ textAlign: 'center' }}>
+          <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
+          <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>첫 검침값을 저장했어요!</div>
+          <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 사용량과 요금을 계산해 드릴게요.</div>
+          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{readingM3.toFixed(3)} ㎥</div>
+        </Card>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: true, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+      </div>
+    );
   }
 
   // ── 4) 기록 완료 ──
@@ -270,6 +328,12 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
         </div>
 
         <Card style={{ marginTop: 12 }}>
+          {saveResult?.bill && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottom: `1.5px dashed ${BGC.line}` }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: BGC.sub }}>이번 달 예상 요금</span>
+              <span className="jua" style={{ fontSize: 22, color: BGC.ink }}>{saveResult.bill.total.toLocaleString()}원</span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span className="jua" style={{ fontSize: 34, color: BGC.skyDeep }}>{usage.toLocaleString()}L</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: BGC.sub }}>/ 목표 {goal}L</span>
@@ -301,7 +365,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
         </div>
 
         <div style={{ flex: 1 }}></div>
-        <PrimaryBtn icon="home" onClick={() => onDone({ usage, reward })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage, reward })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
 );
 }

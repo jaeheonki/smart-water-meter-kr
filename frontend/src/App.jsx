@@ -80,14 +80,14 @@ function App() {
     content = (
       <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'}
         onClose={() => patch({ screen: 'home', camStart: null })}
-        onDone={({ usage: nextUsage, reward }) => patch({ recorded: true, usage: nextUsage, coins: st.coins + reward, screen: 'home', camStart: null })}
+        onDone={({ firstReading, usage: nextUsage, reward }) => patch({ recorded: !firstReading, usage: nextUsage, coins: st.coins + reward, screen: 'home', camStart: null })}
       />
     )
   } else {
     const app = {
       stage, recorded: st.recorded, usage, goal, coins: st.coins, streak, tip,
       house: st.house, userName: st.userName, dolphinName: st.dolphinName, onNav: nav,
-      onManual: () => patch({ screen: 'camera', camStart: 'confirm' }),
+      onManual: () => patch({ screen: 'camera', camStart: 'manual' }),
       wornImg: wornImgFor(st.equipped), sprite: spriteFor(st.equipped), frames: framesFor(st.equipped), faces: facesFor(st.equipped),
       owned: st.owned, equipped: st.equipped, onEquip: (id) => patch({ equipped: id }),
       placedItems: st.placed.map((id) => { const item = decorOf(id); return item?.img ? { id, img: item.img, size: item.size || 56 } : null }).filter(Boolean),
