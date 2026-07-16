@@ -8,6 +8,7 @@ const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
+const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -145,4 +146,30 @@ test('날짜 지정 이력은 현재와 직전 기간 총량을 리터로 합산
 
   assert.equal(summary.currentTotalLiters, 1750)
   assert.equal(summary.previousTotalLiters, 2000)
+})
+
+test('파일 선택 취소는 서버 연결 오류로 표시하지 않고 촬영 화면으로 돌아간다', () => {
+  const capture = cameraFlow.match(/const capture = async \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
+  const cancelBranch = capture.match(/if \(caught instanceof Error && caught\.message === ['"]cancelled['"]\) \{([\s\S]*?)\}/)?.[1] ?? ''
+  const photoCatch = capture.match(/await getPhoto\(\);[\s\S]*?\} catch \(caught\) \{([\s\S]*?)\n    \}\n\n    try \{/)?.[1] ?? ''
+  const cancelConditionIndex = photoCatch.indexOf("if (caught instanceof Error && caught.message === 'cancelled')")
+  const serverErrorIndex = photoCatch.indexOf("setError('서버에 연결할 수 없습니다. 다시 시도해주세요.')")
+
+  assert.match(capture, /try \{[\s\S]*await getPhoto\(\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\}[\s\S]*try \{[\s\S]*await scanMeter\(file\)/)
+  assert.doesNotMatch(cancelBranch, /setError|scanMeter/)
+  assert.match(cancelBranch, /return;/)
+  assert.ok(cancelConditionIndex >= 0)
+  assert.doesNotMatch(photoCatch.slice(0, cancelConditionIndex), /setError/)
+  assert.match(photoCatch.slice(0, cancelConditionIndex), /setStep\(['"]view['"]\)/)
+  assert.ok(serverErrorIndex > cancelConditionIndex)
+})
+
+test('스캔 요청 오류는 cancelled 메시지와 무관하게 서버 연결 오류로 안내한다', () => {
+  const capture = cameraFlow.match(/const capture = async \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
+
+  assert.match(capture, /try \{[\s\S]*await scanMeter\(file\)[\s\S]*\} catch \{[\s\S]*서버에 연결할 수 없습니다\.[\s\S]*setStep\(['"]view['"]\)/)
+})
+
+test('동일하거나 감소한 검침값의 422 안내를 백엔드 검증 조건과 맞춘다', () => {
+  assert.match(cameraFlow, /caught instanceof ApiError && caught\.status === 422[\s\S]*검침값이 이전 기록보다 작거나 같습니다\. 값을 확인해주세요\./)
 })

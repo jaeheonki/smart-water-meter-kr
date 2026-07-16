@@ -89,8 +89,19 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
   const capture = async () => {
     setError('');
     setStep('scan');
+    let file;
     try {
-      const file = await getPhoto();
+      file = await getPhoto();
+    } catch (caught) {
+      setStep('view');
+      if (caught instanceof Error && caught.message === 'cancelled') {
+        return;
+      }
+      setError('서버에 연결할 수 없습니다. 다시 시도해주세요.');
+      return;
+    }
+
+    try {
       const scan = await scanMeter(file);
       if (!scan.success) {
         setConfidence(null);
@@ -120,7 +131,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
       setStep('done');
     } catch (caught) {
       setError(caught instanceof ApiError && caught.status === 422
-        ? '검침값이 이전 기록보다 작습니다. 값을 확인해주세요.'
+        ? '검침값이 이전 기록보다 작거나 같습니다. 값을 확인해주세요.'
         : '저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setSaving(false);
