@@ -1,6 +1,7 @@
 // 계량기 교체 이력의 로딩과 결과 상태를 보여주는 설정 하위 화면
 import { useEffect, useState } from 'react'
 import { getReplacementHistory } from '../api.js'
+import { localDateKeyFromUtcTimestamp } from '../notifications.js'
 import { BGC, Card, GhostBtn, PrimaryBtn, ScreenHead, SectionLabel } from './ui.jsx'
 
 function ReplacementHistoryScreen({ onBack }) {
@@ -41,7 +42,7 @@ function ReplacementHistoryScreen({ onBack }) {
         <div style={{ display: 'grid', gap: 12 }}>
           {history.map((item, index) => (
             <Card key={`${item.replaced_at}-${index}`}>
-              <SectionLabel icon="swap_horiz">교체일 {item.replaced_at.slice(0, 10)}</SectionLabel>
+              <SectionLabel icon="swap_horiz">교체일 {localDateKeyFromUtcTimestamp(item.replaced_at)}</SectionLabel>
               <div style={{ display: 'grid', gap: 8, fontSize: 14, color: BGC.ink }}>
                 <div>이전 마지막 검침 <b>{item.previous_reading_m3 === null ? '이전 기록 없음' : `${item.previous_reading_m3.toLocaleString()}㎥`}</b></div>
                 <div>새 계량기 기준값 <b>{item.baseline_reading_m3.toLocaleString()}㎥</b></div>

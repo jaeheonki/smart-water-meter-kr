@@ -4,6 +4,12 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 
 export const REMINDER_DAYS = 60
 export const REMINDER_KIND = 'daily-meter-reminder'
+const GENERATION_SLOTS = 16
+const MAX_NOTIFICATION_ID = 2147483647
+const NOTIFICATION_ID_START = 100000000
+const MINUTE_BUCKETS = Math.floor(
+  (MAX_NOTIFICATION_ID - NOTIFICATION_ID_START + 1) / (REMINDER_DAYS * GENERATION_SLOTS),
+)
 
 export function localDateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -12,13 +18,20 @@ export function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+export function localDateKeyFromUtcTimestamp(recordedAt) {
+  const timestamp = /(?:Z|[+-]\d{2}:\d{2})$/.test(recordedAt) ? recordedAt : `${recordedAt}Z`
+  return localDateKey(new Date(timestamp))
+}
+
 export function buildReminderNotifications({ time, lastReadingDate, now = new Date(), generation = 0 }) {
   const [hour, minute] = time.split(':').map(Number)
   const first = new Date(now)
   first.setHours(hour, minute, 0, 0)
   if (first <= now || localDateKey(first) === lastReadingDate) first.setDate(first.getDate() + 1)
-  const generationKey = (Math.floor(first.getTime() / 60000) + generation) % 30000000
-  const firstId = 100000000 + generationKey * REMINDER_DAYS
+  const minuteBucket = Math.floor(first.getTime() / 60000) % MINUTE_BUCKETS
+  const generationSlot = generation % GENERATION_SLOTS
+  const firstId = NOTIFICATION_ID_START
+    + (minuteBucket * GENERATION_SLOTS + generationSlot) * REMINDER_DAYS
 
   return Array.from({ length: REMINDER_DAYS }, (_, offset) => {
     const at = new Date(first)
@@ -56,11 +69,20 @@ export function createNotificationService({
     }
 
     const previous = await pendingOwned()
-    const notifications = buildReminderNotifications({
-      time,
-      lastReadingDate,
-      generation: ++generation,
-    })
+    const previousIds = new Set(previous.map(({ id }) => id))
+    let notifications
+    for (let attempt = 0; attempt < GENERATION_SLOTS; attempt += 1) {
+      const candidate = buildReminderNotifications({
+        time,
+        lastReadingDate,
+        generation: ++generation,
+      })
+      if (candidate.every(({ id }) => !previousIds.has(id))) {
+        notifications = candidate
+        break
+      }
+    }
+    if (!notifications) throw new Error('No notification ID generation slot is available')
     await plugin.schedule({ notifications })
     await cancelOwned(previous)
     return { enabled: true }

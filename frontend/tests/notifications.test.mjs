@@ -8,6 +8,7 @@ import {
   REMINDER_KIND,
   buildReminderNotifications,
   createNotificationService,
+  localDateKeyFromUtcTimestamp,
 } from '../src/notifications.js'
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
@@ -116,6 +117,68 @@ test('같은 날짜와 시각의 새 예약 세대는 이전 세대와 ID가 겹
   const previousIds = new Set(previous.map(({ id }) => id))
 
   assert.ok(next.every(({ id }) => !previousIds.has(id)))
+})
+
+test('시각 1분 감소와 세대 1 증가가 ID를 상쇄하지 않고 signed 32-bit 범위를 지킨다', () => {
+  const settings = {
+    lastReadingDate: '2026-07-15',
+    now: new Date(2026, 6, 16, 18, 0),
+  }
+  const previous = buildReminderNotifications({ ...settings, time: '20:00', generation: 1 })
+  const next = buildReminderNotifications({ ...settings, time: '19:59', generation: 2 })
+  const previousIds = new Set(previous.map(({ id }) => id))
+  const allIds = [...previous, ...next].map(({ id }) => id)
+  const minuteBuckets = Math.floor((2147483647 - 100000000 + 1) / (REMINDER_DAYS * 16))
+  const lastBucketAt = new Date((minuteBuckets - 1) * 60000)
+  const boundary = buildReminderNotifications({
+    time: `${String(lastBucketAt.getHours()).padStart(2, '0')}:${String(lastBucketAt.getMinutes()).padStart(2, '0')}`,
+    lastReadingDate: null,
+    now: new Date(lastBucketAt.getTime() - 60000),
+    generation: 15,
+  })
+
+  assert.ok(next.every(({ id }) => !previousIds.has(id)))
+  assert.ok([...allIds, ...boundary.map(({ id }) => id)]
+    .every((id) => Number.isInteger(id) && id > 0 && id <= 2147483647))
+})
+
+test('서비스 재시작 뒤에도 pending ID와 다른 세대를 예약하고 이전 세대만 취소한다', async () => {
+  let pending = []
+  const schedules = []
+  const plugin = {
+    async checkPermissions() { return { display: 'granted' } },
+    async getPending() { return { notifications: [...pending] } },
+    async schedule({ notifications }) {
+      schedules.push(notifications)
+      pending.push(...notifications)
+    },
+    async cancel({ notifications }) {
+      const ids = new Set(notifications.map(({ id }) => id))
+      pending = pending.filter(({ id }) => !ids.has(id))
+    },
+  }
+  const settings = { time: '23:59', lastReadingDate: '2026-07-15' }
+
+  await createNotificationService({ plugin, isNative: true }).refresh(settings)
+  await createNotificationService({ plugin, isNative: true }).refresh(settings)
+
+  const firstIds = new Set(schedules[0].map(({ id }) => id))
+  const secondIds = schedules[1].map(({ id }) => id)
+  assert.ok(secondIds.every((id) => !firstIds.has(id)))
+  assert.deepEqual(pending.map(({ id }) => id), secondIds)
+})
+
+test('naive UTC 시각을 서울 사용자 로컬 날짜로 변환한다', () => {
+  const originalTimezone = process.env.TZ
+  process.env.TZ = 'Asia/Seoul'
+  try {
+    assert.equal(
+      localDateKeyFromUtcTimestamp('2026-07-16T15:30:00'),
+      '2026-07-17',
+    )
+  } finally {
+    process.env.TZ = originalTimezone
+  }
 })
 
 test('권한이 거절되면 예약하지 않고 비활성 사유를 반환한다', async () => {
