@@ -5,11 +5,12 @@
 
 import io
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from threading import Event, Lock
 
 import src.api.db as _db
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, create_engine
+from sqlalchemy import event
+from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select
 
 from src.api.models import Reading
@@ -185,15 +186,33 @@ def test_manual_concurrent_requests_are_serialized(tmp_path, monkeypatch):
     _db._engine = engine
 
     high_in_calc = Event()
-    low_in_calc = Event()
+    low_transaction_started = Event()
+    statement_counts = {"begin": 0, "reading_select": 0}
+    statement_counts_lock = Lock()
     original_calc = meter.calc
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def signal_low_transaction(_conn, _cursor, statement, _parameters, _context, _executemany):
+        normalized = statement.lstrip().upper()
+        with statement_counts_lock:
+            if normalized.startswith("BEGIN IMMEDIATE"):
+                statement_counts["begin"] += 1
+                if statement_counts["begin"] == 3:
+                    low_transaction_started.set()
+
+    @event.listens_for(engine, "after_cursor_execute")
+    def signal_low_read(_conn, _cursor, statement, _parameters, _context, _executemany):
+        normalized = statement.lstrip().upper()
+        with statement_counts_lock:
+            if normalized.startswith("SELECT") and "ORDER BY READING.RECORDED_AT DESC" in normalized:
+                statement_counts["reading_select"] += 1
+                if statement_counts["reading_select"] == 3:
+                    low_transaction_started.set()
 
     def synchronized_calc(region, prev_reading, curr_reading):
         if curr_reading == 1100.0:
             high_in_calc.set()
-            low_in_calc.wait(timeout=1)
-        elif curr_reading == 1050.0:
-            low_in_calc.set()
+            assert low_transaction_started.wait(timeout=10)
         return original_calc(region, prev_reading, curr_reading)
 
     monkeypatch.setattr(meter, "calc", synchronized_calc)
@@ -214,16 +233,24 @@ def test_manual_concurrent_requests_are_serialized(tmp_path, monkeypatch):
                     json={"reading_m3": 1100.0, "input_mode": "manual"},
                     headers=HEADERS_A,
                 )
-                assert high_in_calc.wait(timeout=1)
+                assert high_in_calc.wait(timeout=10)
                 low = executor.submit(
                     test_client.post,
                     "/meter/manual",
                     json={"reading_m3": 1050.0, "input_mode": "manual"},
                     headers=HEADERS_A,
                 )
-                statuses = [high.result(timeout=3).status_code, low.result(timeout=3).status_code]
+                statuses = [high.result(timeout=10).status_code, low.result(timeout=10).status_code]
 
         assert statuses == [200, 422]
+        with Session(engine) as session:
+            saved_values = sorted(
+                session.exec(
+                    select(Reading).where(Reading.device_id == HEADERS_A["X-Device-ID"])
+                ).all(),
+                key=lambda row: row.reading_m3,
+            )
+        assert [row.reading_m3 for row in saved_values] == [1000.0, 1100.0]
     finally:
         _db._engine = original_engine
         engine.dispose()
