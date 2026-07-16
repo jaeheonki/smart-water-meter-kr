@@ -16,7 +16,23 @@ test('앱은 알림 어댑터로 시작 refresh와 action listener cleanup을 �
   assert.doesNotMatch(app, /@capacitor\/local-notifications/)
   assert.match(app, /notificationService\.refresh\(\{[\s\S]*time: st\.notificationTime,[\s\S]*lastReadingDate: st\.lastReadingDate,[\s\S]*\}\)\.then\(\(result\) => \{[\s\S]*if \(!result\.enabled\) patch\(\{ notificationEnabled: false \}\)[\s\S]*\}\)\.catch\(\(\) => \{\}\)/)
   assert.match(app, /notificationService\.listenForActions\(\(\) => patch\(\{ screen: ['"]camera['"], camStart: ['"]view['"] \}\)\)/)
-  assert.match(app, /return \(\) => \{[\s\S]*void listener\?\.remove\(\)[\s\S]*\}/)
+  assert.match(app, /return \(\) => \{[\s\S]*void listener\??\.remove\(\)[\s\S]*\}/)
+})
+
+test('action listener 등록 실패를 처리한다', () => {
+  assert.match(app, /notificationService\.listenForActions\([\s\S]*?\.then\([\s\S]*?\)\s*\.catch\(\(\) => \{\}\)/)
+})
+
+test('cleanup 전에 등록된 action listener 제거 실패를 처리한다', () => {
+  assert.match(app, /if \(disposed\) void handle\.remove\(\)\.catch\(\(\) => \{\}\)/)
+})
+
+test('일반 action listener cleanup 제거 실패를 처리한다', () => {
+  assert.match(app, /if \(listener\) void listener\.remove\(\)\.catch\(\(\) => \{\}\)/)
+})
+
+test('검침 완료 후 알림 refresh 실패를 처리한다', () => {
+  assert.match(app, /notificationService\.refresh\(\{ time: st\.notificationTime, lastReadingDate \}\)\.catch\(\(\) => \{\}\)/)
 })
 
 function createPlugin({ permission = 'granted', pending = [], scheduleError } = {}) {

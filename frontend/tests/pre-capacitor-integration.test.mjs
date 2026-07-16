@@ -38,6 +38,38 @@ test('알림 설정은 성공 뒤에만 저장하고 권한 거절과 예약 오
   assert.match(settings, /changeNotification\(notificationRetry\.enabled, notificationRetry\.time\)/)
 })
 
+test('알림 시각 재시도 성공은 실패 당시 시각으로 로컬 입력 상태를 동기화한다', async () => {
+  const changeNotificationSource = settings.match(
+    /const changeNotification = (async \(enabled, time = notificationTime\) => \{[\s\S]*?\n  \})\n\n  const changeNotificationTime/,
+  )?.[1]
+  assert.ok(changeNotificationSource)
+
+  const createChangeNotification = new Function(
+    'notificationTime',
+    'setNotificationPending',
+    'setNotificationError',
+    'setNotificationRetry',
+    'setNotificationTime',
+    'onNotificationChange',
+    'st',
+    `return (${changeNotificationSource})`,
+  )
+  const timeChanges = []
+  const changeNotification = createChangeNotification(
+    '20:00',
+    () => {},
+    () => {},
+    () => {},
+    (time) => { timeChanges.push(time) },
+    async () => ({ enabled: true }),
+    { notificationTime: '20:00' },
+  )
+
+  await changeNotification(true, '21:30')
+
+  assert.deepEqual(timeChanges, ['21:30'])
+})
+
 test('검침 완료 시 로컬 날짜를 저장하고 켜진 알림을 다시 예약한다', () => {
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKey\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
   assert.match(app, /const completeReading = \(\{ firstReading, usage: nextUsage, reward \}\) => \{[\s\S]*const lastReadingDate = localDateKey\(\)[\s\S]*lastReadingDate,[\s\S]*if \(st\.notificationEnabled\) \{[\s\S]*notificationService\.refresh\(\{ time: st\.notificationTime, lastReadingDate \}\)/)

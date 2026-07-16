@@ -61,6 +61,7 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
     try {
       const result = await onNotificationChange({ enabled, time })
       if (enabled && !result.enabled) setNotificationError('permission-denied')
+      else setNotificationTime(time)
     } catch {
       setNotificationTime(st.notificationTime || '20:00')
       setNotificationRetry({ enabled, time })

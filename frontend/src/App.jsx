@@ -58,12 +58,13 @@ function App() {
     let disposed = false
     void notificationService.listenForActions(() => patch({ screen: 'camera', camStart: 'view' }))
       .then((handle) => {
-        if (disposed) void handle.remove()
+        if (disposed) void handle.remove().catch(() => {})
         else listener = handle
       })
+      .catch(() => {})
     return () => {
       disposed = true
-      void listener?.remove()
+      if (listener) void listener.remove().catch(() => {})
     }
   }, [])
   useEffect(() => {
@@ -112,7 +113,7 @@ function App() {
       lastReadingDate,
     })
     if (st.notificationEnabled) {
-      void notificationService.refresh({ time: st.notificationTime, lastReadingDate })
+      void notificationService.refresh({ time: st.notificationTime, lastReadingDate }).catch(() => {})
     }
   }
   const selectInitialRegion = async (region) => {
