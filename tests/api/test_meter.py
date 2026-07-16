@@ -4,7 +4,12 @@
 # manual: 실제 calc() 호출 (계산 모듈 테스트 겸용)
 
 import io
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
+import src.api.db as _db
+from fastapi.testclient import TestClient
+from sqlmodel import SQLModel, create_engine
 from sqlmodel import select
 
 from src.api.models import Reading
@@ -164,3 +169,61 @@ def test_manual_device_isolation(client):
 
     assert resp_a.json()["usage_m3"] == 10.0
     assert resp_b.json()["usage_m3"] == 20.0
+
+
+def test_manual_concurrent_requests_are_serialized(tmp_path, monkeypatch):
+    """같은 기기의 동시 요청은 최신 검침값 조회부터 저장까지 직렬화한다."""
+    from src.api.main import app
+    from src.api.routers import meter
+
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'concurrent.db'}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(engine)
+    original_engine = _db._engine
+    _db._engine = engine
+
+    high_in_calc = Event()
+    low_in_calc = Event()
+    original_calc = meter.calc
+
+    def synchronized_calc(region, prev_reading, curr_reading):
+        if curr_reading == 1100.0:
+            high_in_calc.set()
+            low_in_calc.wait(timeout=1)
+        elif curr_reading == 1050.0:
+            low_in_calc.set()
+        return original_calc(region, prev_reading, curr_reading)
+
+    monkeypatch.setattr(meter, "calc", synchronized_calc)
+
+    try:
+        with TestClient(app) as test_client:
+            first = test_client.post(
+                "/meter/manual",
+                json={"reading_m3": 1000.0, "input_mode": "manual"},
+                headers=HEADERS_A,
+            )
+            assert first.status_code == 200
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                high = executor.submit(
+                    test_client.post,
+                    "/meter/manual",
+                    json={"reading_m3": 1100.0, "input_mode": "manual"},
+                    headers=HEADERS_A,
+                )
+                assert high_in_calc.wait(timeout=1)
+                low = executor.submit(
+                    test_client.post,
+                    "/meter/manual",
+                    json={"reading_m3": 1050.0, "input_mode": "manual"},
+                    headers=HEADERS_A,
+                )
+                statuses = [high.result(timeout=3).status_code, low.result(timeout=3).status_code]
+
+        assert statuses == [200, 422]
+    finally:
+        _db._engine = original_engine
+        engine.dispose()

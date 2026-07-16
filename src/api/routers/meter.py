@@ -67,9 +67,9 @@ def post_manual(
     - 첫 검침이거나 지역 미설정이면 first_reading=True, 요금·환경 필드는 null.
     - 두 번째 검침부터 지역이 설정되어 있으면 사용량·요금·CO2 계산 후 반환.
     """
-    now = datetime.now(timezone.utc).replace(tzinfo=None)  # SQLite는 naive datetime 저장
-
     # 이전 검침 기록 조회 (현재 기기의 가장 최근)
+    session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # SQLite는 naive datetime 저장
     prev = session.exec(
         select(Reading)
         .where(Reading.device_id == device_id)
