@@ -8,9 +8,8 @@
 src/                    FastAPI, YOLOX 추론, 17개 지역 요금 계산
 tests/                  Python API·도메인 테스트
 frontend/               React UI, Node 테스트, Capacitor Android
-docs/                   프론트 인수인계, API, EC2 배포 가이드
+docs/                   프론트 인수인계 PDF, API, EC2 배포 가이드
 output/android/         팀 확인용 Debug APK 안내와 로컬 APK
-output/pdf/             프론트 연동 인수인계 PDF
 ```
 
 구현 연결 흐름과 현재 검증 상태는 [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md)를 먼저 확인한다.
@@ -72,7 +71,7 @@ npm run build
 - [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md).
 - [API 사용 가이드](docs/api-guide.md).
 - [EC2 Docker 배포 가이드](docs/deployment-guide.md).
-- `output/pdf/banguli-frontend-integration.pdf`.
+- `docs/banguli-frontend-integration.pdf`.
 
 ## 운영 API
 

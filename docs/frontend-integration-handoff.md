@@ -28,13 +28,12 @@ smart_water_meter/
 ├─ docs/
 │  ├─ frontend-integration-handoff.md
 │  ├─ api-guide.md
-│  └─ deployment-guide.md
+│  ├─ deployment-guide.md
+│  └─ banguli-frontend-integration.pdf
 ├─ output/
-│  ├─ android/
-│  │  ├─ README.md
-│  │  └─ banguli-debug.apk      # 로컬 전달용, Git 제외
-│  └─ pdf/
-│     └─ banguli-frontend-integration.pdf
+│  └─ android/
+│     ├─ README.md
+│     └─ banguli-debug.apk      # 로컬 전달용, Git 제외
 ├─ Dockerfile
 ├─ pyproject.toml
 ├─ uv.lock
