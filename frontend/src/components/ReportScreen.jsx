@@ -76,9 +76,9 @@ function ReportScreen({ usage, recorded, goal }) {
       </div>
       {isCustom && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 2px 0' }}>
-          <input type="date" value={from} max={to} onChange={(ev) => setFrom(ev.target.value)} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
+          <input type="date" value={from} max={to} onChange={(ev) => { if (ev.target.value) setFrom(ev.target.value); }} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
           <span style={{ color: BGC.sub, fontWeight: 800 }}>~</span>
-          <input type="date" value={to} min={from} onChange={(ev) => setTo(ev.target.value)} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
+          <input type="date" value={to} min={from} onChange={(ev) => { if (ev.target.value) setTo(ev.target.value); }} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
         </div>
       )}
       <div style={{ margin: '8px 2px 0', textAlign: 'center', color: BGC.sub, fontSize: 12.5, fontWeight: 700 }}>

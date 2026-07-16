@@ -115,6 +115,11 @@ test('리포트는 로딩과 빈 상태를 포함해 이번·이전 기간 날�
   assert.match(report, /이전 기간/)
 })
 
+test('날짜 지정 입력을 지워도 마지막 유효 범위를 유지한다', () => {
+  assert.match(report, /value=\{from\}[\s\S]*?onChange=\{\(ev\) => \{ if \(ev\.target\.value\) setFrom\(ev\.target\.value\); \}\}/)
+  assert.match(report, /value=\{to\}[\s\S]*?onChange=\{\(ev\) => \{ if \(ev\.target\.value\) setTo\(ev\.target\.value\); \}\}/)
+})
+
 test('주간 기간은 오늘을 포함한 정확히 7일과 바로 이전 7일이다', async () => {
   const { getPeriodDateRange } = await import('../src/reportData.js')
 
