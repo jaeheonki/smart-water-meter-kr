@@ -17,13 +17,28 @@ DATABASE_URL = "sqlite:///./data/data.db"
 _engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 
+def _ensure_reading_baseline_column(engine):
+    """기존 reading 테이블에 교체 기준점 컬럼을 한 번만 추가한다."""
+    with engine.begin() as connection:
+        columns = {
+            row[1] for row in connection.exec_driver_sql("PRAGMA table_info(reading)")
+        }
+        if "is_baseline" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE reading ADD COLUMN "
+                "is_baseline BOOLEAN NOT NULL DEFAULT 0"
+            )
+
+
 def create_db_and_tables(engine=None):
     """Reading, Settings 테이블을 생성한다. 이미 존재하면 무시한다.
 
     Args:
         engine: 테스트에서 인메모리 엔진을 넘길 때 사용. None이면 기본 파일 엔진 사용.
     """
-    SQLModel.metadata.create_all(engine or _engine)
+    target_engine = engine or _engine
+    SQLModel.metadata.create_all(target_engine)
+    _ensure_reading_baseline_column(target_engine)
 
 
 def get_session() -> Generator[Session, None, None]:

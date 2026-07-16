@@ -22,6 +22,7 @@ class Reading(SQLModel, table=True):
     confidence: Optional[float] = None           # YOLO 신뢰도 (수동 입력 시 null)
     input_mode: str                              # "auto" | "manual"
     recorded_at: datetime                        # 저장 시각 (UTC)
+    is_baseline: bool = False                    # 계량기 교체 후 새 계산 기준점 여부
 
 
 class Settings(SQLModel, table=True):
