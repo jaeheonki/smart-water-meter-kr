@@ -10,6 +10,7 @@ import ReportScreen from './components/ReportScreen.jsx'
 import ShopScreen, { SHOP_ITEMS, wornImgFor, spriteFor, framesFor, facesFor } from './components/ShopScreen.jsx'
 import SettingsScreen, { AttendanceModal, RegionModal } from './components/SettingsScreen.jsx'
 import { saveSettings } from './api.js'
+import { deleteDeviceData } from './api.js'
 import { getRegionCode } from './regions.js'
 import { notificationService, localDateKey } from './notifications.js'
 import './App.css'
@@ -141,6 +142,14 @@ function App() {
       return next
     })
   }
+  const resetApplication = async () => {
+    await deleteDeviceData()
+    await notificationService.disable()
+    localStorage.removeItem(STORE_KEY)
+    localStorage.removeItem('device_id')
+    setShowAttend(false)
+    setSt({ ...DEFAULT_STATE })
+  }
 
   const goal = BG.GOAL_BY_HOUSEHOLD[st.house] || 550
   const scenario = '절약'
@@ -180,7 +189,8 @@ function App() {
       ledger: <LedgerScreen usage={usage} recorded={st.recorded} goal={goal} onNav={nav} unit={unit} tariff={tariff} />,
       report: <ReportScreen usage={usage} recorded={st.recorded} goal={goal} />,
       settings: <SettingsScreen st={st} patch={patch} onReplayOnboarding={replayOnboarding}
-        onNotificationChange={updateNotificationSettings} onNotificationRefresh={refreshNotificationSettings} />,
+        onNotificationChange={updateNotificationSettings} onNotificationRefresh={refreshNotificationSettings}
+        onResetApplication={resetApplication} />,
       shop: <ShopScreen coins={st.coins} owned={st.owned} equipped={st.equipped} placed={st.placed}
         onBuy={(id, price) => patch({ coins: st.coins - price, owned: [...st.owned, id] })}
         onEquip={(id) => patch({ equipped: id })}

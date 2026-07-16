@@ -19,6 +19,105 @@ const expectedRegions = {
   changwon: '창원', jeju: '제주',
 }
 
+test('기기 데이터 삭제 API는 204 응답을 JSON으로 읽지 않는다', async () => {
+  const requestSource = api.match(/async function request\(path, options = \{\}\) \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(requestSource)
+
+  const createRequest = new Function(
+    'BASE',
+    'getDeviceId',
+    'ApiError',
+    'fetch',
+    `return (${requestSource})`,
+  )
+  let parsedJson = false
+  const request = createRequest(
+    'http://example.test',
+    () => 'test-device',
+    Error,
+    async () => ({
+      ok: true,
+      status: 204,
+      json: async () => { parsedJson = true; throw new Error('204 body must not be parsed') },
+    }),
+  )
+
+  assert.equal(await request('/device-data', { method: 'DELETE' }), null)
+  assert.equal(parsedJson, false)
+  assert.match(api, /export async function deleteDeviceData\(\) \{\s*return request\(['"]\/device-data['"], \{ method: ['"]DELETE['"] \}\)\s*\}/)
+})
+
+test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 상태를 지운다', async () => {
+  const resetSource = app.match(/const resetApplication = (async \(\) => \{[\s\S]*?\n  \})\n/)?.[1]
+  assert.ok(resetSource)
+
+  const events = []
+  let finishServerDelete
+  const serverDelete = new Promise((resolve) => { finishServerDelete = resolve })
+  const createReset = new Function(
+    'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
+    'setShowAttend', 'setSt', 'DEFAULT_STATE',
+    `return (${resetSource})`,
+  )
+  const reset = createReset(
+    async () => { events.push('server'); await serverDelete },
+    { disable: async () => { events.push('notifications') } },
+    { removeItem: (key) => { events.push(`remove:${key}`) } },
+    'banguli_app_v1',
+    () => { events.push('attendance') },
+    () => { events.push('state') },
+    { onboarded: false },
+  )
+
+  const pending = reset()
+  await Promise.resolve()
+  assert.deepEqual(events, ['server'])
+  finishServerDelete()
+  await pending
+  assert.deepEqual(events, [
+    'server', 'notifications', 'remove:banguli_app_v1', 'remove:device_id', 'attendance', 'state',
+  ])
+})
+
+test('전체 앱 초기화 실패는 로컬 상태를 보존해 다시 시도할 수 있다', async () => {
+  const resetSource = app.match(/const resetApplication = (async \(\) => \{[\s\S]*?\n  \})\n/)?.[1]
+  assert.ok(resetSource)
+  const createReset = new Function(
+    'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
+    'setShowAttend', 'setSt', 'DEFAULT_STATE',
+    `return (${resetSource})`,
+  )
+
+  for (const failure of ['server', 'notifications']) {
+    const localEffects = []
+    const reset = createReset(
+      async () => { if (failure === 'server') throw new Error('server failed') },
+      { disable: async () => { if (failure === 'notifications') throw new Error('notification failed') } },
+      { removeItem: (key) => { localEffects.push(key) } },
+      'banguli_app_v1',
+      () => { localEffects.push('attendance') },
+      () => { localEffects.push('state') },
+      { onboarded: false },
+    )
+
+    await assert.rejects(reset())
+    assert.deepEqual(localEffects, [], `${failure} 실패 시 로컬 상태가 변경됨`)
+  }
+})
+
+test('설정의 위험 카드는 이중 확인과 처리 중 중복 클릭 차단 및 실패 안내를 제공한다', () => {
+  assert.match(settings, /const \[resetStep, setResetStep\] = useState\(0\)/)
+  assert.match(settings, /const \[resetPending, setResetPending\] = useState\(false\)/)
+  assert.match(settings, /const resetPendingRef = useRef\(false\)/)
+  assert.match(settings, /if \(resetPendingRef\.current\) return[\s\S]*resetPendingRef\.current = true[\s\S]*finally \{[\s\S]*resetPendingRef\.current = false/)
+  assert.match(settings, /서버 검침·교체 이력과 지역 설정, 로컬 이름·코인·아이템·알림 설정을 모두 삭제합니다\./)
+  assert.match(settings, /모든 데이터 삭제/)
+  assert.match(settings, /disabled=\{resetPending\}/)
+  assert.match(settings, /초기화하지 못했습니다\. 다시 시도해 주세요\./)
+  assert.match(settings, /onResetApplication/)
+  assert.match(app, /onResetApplication=\{resetApplication\}/)
+})
+
 test('알림 기본 상태와 설정 화면 계약을 제공한다', () => {
   assert.match(app, /notificationEnabled:\s*false/)
   assert.match(app, /notificationTime:\s*['"]20:00['"]/)
@@ -79,7 +178,7 @@ test('검침 완료 시 로컬 날짜를 저장하고 켜진 알림을 다시 �
 })
 
 test('설정 진입 시 알림을 새로고치고 알림 제어 콜백을 전달한다', () => {
-  assert.match(settings, /function SettingsScreen\(\{ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh \}\)/)
+  assert.match(settings, /function SettingsScreen\(\{ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh, onResetApplication \}\)/)
   assert.match(settings, /useEffect\(\(\) => \{[\s\S]*if \(st\.notificationEnabled\)[\s\S]*onNotificationRefresh\(\)[\s\S]*\}, \[\]\)/)
   assert.match(app, /<SettingsScreen[\s\S]*onNotificationChange=\{updateNotificationSettings\}[\s\S]*onNotificationRefresh=\{refreshNotificationSettings\}/)
 })

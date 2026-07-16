@@ -1,11 +1,11 @@
 // 사용자 이름과 표시 단위 및 지역을 관리하는 설정 화면과 앱 모달
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getRegions, getSettings, saveSettings } from '../api.js'
 import { REGION_LABELS } from '../regions.js'
 import ReplacementHistoryScreen from './ReplacementHistoryScreen.jsx'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
-function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh }) {
+function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh, onResetApplication }) {
   const [regionCodes, setRegionCodes] = useState([])
   const [currentRegion, setCurrentRegion] = useState(null)
   const [loadingRegions, setLoadingRegions] = useState(true)
@@ -17,6 +17,10 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
   const [notificationRetry, setNotificationRetry] = useState(null)
   const [notificationTime, setNotificationTime] = useState(st.notificationTime || '20:00')
   const [showReplacementHistory, setShowReplacementHistory] = useState(false)
+  const [resetStep, setResetStep] = useState(0)
+  const [resetPending, setResetPending] = useState(false)
+  const [resetError, setResetError] = useState(false)
+  const resetPendingRef = useRef(false)
   const set = (k, v) => patch({ [k]: v });
   const inputStyle = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '11px 13px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: BGC.ink, background: '#fff' };
   const labelStyle = { fontSize: 12.5, fontWeight: 800, color: BGC.sub };
@@ -93,6 +97,21 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
       setRegionError(true)
     } finally {
       setSavingRegion(false)
+    }
+  }
+
+  const resetApplication = async () => {
+    if (resetPendingRef.current) return
+    resetPendingRef.current = true
+    setResetPending(true)
+    setResetError(false)
+    try {
+      await onResetApplication()
+    } catch {
+      setResetError(true)
+    } finally {
+      resetPendingRef.current = false
+      setResetPending(false)
     }
   }
 
@@ -193,6 +212,41 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
         </button>
         <div style={{ fontSize: 12, color: BGC.sub, marginTop: 8 }}>온보딩을 다시 보고 앱을 처음 상태로 되돌려요. (보유 코인·아이템은 유지)</div>
       </Card>
+
+      <Card style={{ marginTop: 12, border: '1.5px solid #F1B5B5', background: '#FFF8F8' }}>
+        <SectionLabel icon="delete_forever">전체 앱 초기화</SectionLabel>
+        <div style={{ fontSize: 12, color: '#A34B4B', lineHeight: 1.6 }}>서버와 이 기기에 저장된 모든 데이터를 영구적으로 삭제합니다.</div>
+        <button className="press" onClick={() => { setResetError(false); setResetStep(1) }} style={{
+          width: '100%', boxSizing: 'border-box', marginTop: 10, padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+          border: '1.5px solid #D85C5C', background: '#fff', color: '#B53D3D', fontFamily: 'Jua', fontSize: 15,
+        }}>전체 앱 초기화</button>
+      </Card>
+
+      {resetStep > 0 && (
+        <ModalOverlay>
+          <div className="fade-up" style={{ width: 330, background: '#fff', borderRadius: 24, padding: '22px 20px', boxShadow: '0 20px 50px rgba(21,58,86,0.35)', boxSizing: 'border-box' }}>
+            <div className="jua" style={{ fontSize: 20, color: '#A33E3E', textAlign: 'center' }}>전체 앱 초기화</div>
+            {resetStep === 1 ? (
+              <>
+                <div style={{ fontSize: 13, color: BGC.sub, lineHeight: 1.7, marginTop: 12 }}>서버 검침·교체 이력과 지역 설정, 로컬 이름·코인·아이템·알림 설정을 모두 삭제합니다. 삭제한 데이터는 복구할 수 없습니다.</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button className="press" disabled={resetPending} onClick={() => setResetStep(0)} style={{ flex: 1, padding: 11, borderRadius: 12, border: `1.5px solid ${BGC.line}`, background: '#fff', color: BGC.sub, fontFamily: 'Jua' }}>취소</button>
+                  <button className="press" disabled={resetPending} onClick={() => setResetStep(2)} style={{ flex: 1, padding: 11, borderRadius: 12, border: 'none', background: '#D85C5C', color: '#fff', fontFamily: 'Jua' }}>계속</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: BGC.sub, lineHeight: 1.7, marginTop: 12, textAlign: 'center' }}>정말 모든 데이터를 삭제할까요?</div>
+                {resetError && <div style={{ marginTop: 10, fontSize: 12, color: '#C26A1B', textAlign: 'center' }}>초기화하지 못했습니다. 다시 시도해 주세요.</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button className="press" disabled={resetPending} onClick={() => setResetStep(0)} style={{ flex: 1, padding: 11, borderRadius: 12, border: `1.5px solid ${BGC.line}`, background: '#fff', color: BGC.sub, fontFamily: 'Jua' }}>취소</button>
+                  <button className="press" disabled={resetPending} onClick={() => { void resetApplication() }} style={{ flex: 1, padding: 11, borderRadius: 12, border: 'none', background: '#D85C5C', color: '#fff', fontFamily: 'Jua' }}>{resetPending ? '삭제 중...' : '모든 데이터 삭제'}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </ModalOverlay>
+      )}
     </div>
   );
 }

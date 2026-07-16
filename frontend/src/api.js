@@ -23,6 +23,7 @@ async function request(path, options = {}) {
   const headers = { "X-Device-ID": getDeviceId(), ...options.headers };
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   if (!res.ok) throw new ApiError(res.status, await res.text());
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -48,6 +49,10 @@ export async function getHistory() {
 
 export async function getReplacementHistory() {
   return request('/history/replacements')
+}
+
+export async function deleteDeviceData() {
+  return request('/device-data', { method: 'DELETE' })
 }
 
 export async function getHistoryPeriod(start, end) {
