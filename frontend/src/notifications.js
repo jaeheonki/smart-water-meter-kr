@@ -23,8 +23,8 @@ export function buildReminderNotifications({ time, lastReadingDate, now = new Da
     at.setDate(first.getDate() + offset)
     return {
       id: 100000000 + Number(localDateKey(at).replaceAll('-', '')),
-      title: '방울이가 말을 건 것 같아요',
-      body: '오늘의 수도 계량기를 검침해 주세요',
+      title: '방울이가 마를 것 같아요!',
+      body: '오늘의 수도 계량기를 검침해 주세요.',
       schedule: { at, allowWhileIdle: false },
       autoCancel: true,
       extra: { kind: REMINDER_KIND, route: 'camera' },

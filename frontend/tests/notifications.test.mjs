@@ -54,6 +54,9 @@ test('19시에 20시 알림을 만들면 오늘부터 60일을 예약한다', ()
   assert.equal(notifications[0].schedule.at.getTime(), new Date(2026, 6, 16, 20, 0).getTime())
   assert.equal(notifications.at(-1).schedule.at.getTime(), new Date(2026, 8, 13, 20, 0).getTime())
   assert.equal(new Set(notifications.map(({ id }) => id)).size, REMINDER_DAYS)
+  assert.ok(notifications.every(({ title, body }) => (
+    title === '방울이가 마를 것 같아요!' && body === '오늘의 수도 계량기를 검침해 주세요.'
+  )))
   assert.ok(notifications.every(({ extra }) => (
     extra.kind === REMINDER_KIND && extra.route === 'camera'
   )))
@@ -124,4 +127,21 @@ test('알림 액션 중 camera 경로만 콜백을 실행한다', async () => {
   plugin.performAction({ route: 'camera' })
 
   assert.equal(opened, 1)
+})
+
+test('웹에서는 모든 서비스 동작이 플러그인을 호출하지 않는 성공 no-op이다', async () => {
+  const plugin = new Proxy({}, {
+    get() {
+      throw new Error('웹에서 플러그인을 호출하면 안 됩니다')
+    },
+  })
+  const service = createNotificationService({ plugin, isNative: false })
+  const settings = { time: '20:00', lastReadingDate: '2026-07-15' }
+
+  assert.deepEqual(await service.enable(settings), { enabled: true })
+  assert.deepEqual(await service.refresh(settings), { enabled: true })
+  assert.equal(await service.disable(), undefined)
+  const listener = await service.listenForActions(() => {})
+  assert.equal(typeof listener.remove, 'function')
+  assert.equal(await listener.remove(), undefined)
 })
