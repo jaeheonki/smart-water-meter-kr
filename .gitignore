@@ -27,3 +27,15 @@ data/
 
 # 번들 복구 산출물 (원본은 Downloads의 방울이_공유용.html)
 extracted/
+
+# 로컬 에이전트 작업 파일
+.claude/
+.superpowers/
+checklist.md
+context-notes.md
+
+# 로컬 전달용 Android 바이너리
+output/android/*.apk
+
+# 루트의 이전 로컬 SQLite 파일
+/data.db

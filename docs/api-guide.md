@@ -120,6 +120,17 @@ image: <이미지 파일>
 }
 ```
 
+계량기 교체 기준점 저장 시:
+```json
+{
+  "reading_m3": 20.0,
+  "input_mode": "manual",
+  "reset_baseline": true
+}
+```
+
+`reset_baseline`은 일반 저장이 이전값 이하라서 422가 발생한 뒤, 사용자가 계량기 교체를 명시적으로 확인한 경우에만 사용한다. 기존 이력은 보존되고 새 값부터 계산 기준이 다시 시작된다.
+
 **응답 (첫 검침 또는 지역 미설정)**
 ```json
 {
@@ -157,7 +168,7 @@ image: <이미지 파일>
 
 **에러**
 - `400` — X-Device-ID 헤더 없음
-- `422` — 당월 검침값이 전월보다 작음
+- `422` — 일반 저장의 현재 검침값이 이전값보다 작거나 같음
 
 ---
 
@@ -168,8 +179,8 @@ image: <이미지 파일>
 ```json
 [
   {
-    "start_label": "2026-05",
-    "end_label": "2026-06",
+    "start_label": "2026-05-14",
+    "end_label": "2026-06-14",
     "usage_m3": 23.0,
     "bill_total": 9350,
     "co2_kg": 5.6
@@ -186,18 +197,48 @@ image: <이미지 파일>
 특정 기간의 이력만 조회.
 
 **쿼리 파라미터**
-- `start`: 시작 월 (YYYY-MM)
-- `end`: 종료 월 (YYYY-MM)
+- `start`: 시작일 (YYYY-MM-DD)
+- `end`: 종료일 (YYYY-MM-DD)
 
 **예시**
 ```
-GET /history/period?start=2026-01&end=2026-06
+GET /history/period?start=2026-01-01&end=2026-06-30
 ```
 
 **응답** — /history와 동일한 형식
 
 **에러**
-- `422` — YYYY-MM 형식이 아닌 경우
+- `422` — YYYY-MM-DD 형식이 아닌 경우
+
+---
+
+### GET /history/replacements
+
+현재 기기의 계량기 교체 기준점 기록을 최신순으로 조회한다.
+
+**응답**
+```json
+[
+  {
+    "replaced_at": "2026-07-16T08:00:00",
+    "previous_reading_m3": 1020.0,
+    "baseline_reading_m3": 20.0,
+    "input_mode": "manual"
+  }
+]
+```
+
+교체 기록이 없으면 빈 배열을 반환한다.
+
+---
+
+### DELETE /device-data
+
+현재 `X-Device-ID`의 검침 이력과 지역 설정을 삭제한다. 다른 기기의 데이터는 유지한다.
+
+**응답**
+
+성공 시 본문 없이 `204 No Content`를 반환한다. 반복 호출도 `204`다. 프론트는 서버 삭제 성공 뒤에만 알림 예약과 localStorage를 삭제한다.
 
 ---
 
@@ -218,4 +259,14 @@ GET /history/period?start=2026-01&end=2026-06
 
 3. 이력
    GET /history → 월별 사용량 그래프
+
+4. 계량기 교체
+   일반 POST /meter/manual → 422
+   → 사용자에게 값과 교체 여부 확인
+   → POST /meter/manual {"reset_baseline": true}
+   → 기존 이력 보존, 다음 검침부터 계산 재개
+
+5. 전체 초기화
+   DELETE /device-data → 204
+   → 로컬 알림 취소와 앱 상태·device_id 삭제
 ```

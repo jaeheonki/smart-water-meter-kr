@@ -46,22 +46,17 @@ ssh -i "jae.pem" ubuntu@<퍼블릭 IP>
 
 ---
 
-## 4. 서버 세팅
+## 4. 저장소 준비
 
 ```bash
-# uv 설치
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.bashrc
-
-# 코드 clone (dev 브랜치)
-git clone -b dev https://github.com/jaeheonki/smart-water-meter-kr.git
+# 현재 프론트 통합 브랜치 clone
+git clone -b feature_app_merge https://github.com/jaeheonki/smart-water-meter-kr.git
 cd smart-water-meter-kr
-
-# 의존성 설치 (개발용 패키지 제외)
-uv sync --no-dev
 ```
 
 비공개 저장소 인증을 요청하면 GitHub 사용자명을 입력하고, 비밀번호 입력란에는 Personal Access Token을 입력한다. 토큰이 셸 기록이나 `.git/config`에 남지 않도록 clone URL에는 토큰을 포함하지 않는다.
+
+현재 운영 검증은 `feature_app_merge`를 사용한다. 이 브랜치가 `dev`에 머지된 뒤에는 아래 갱신 명령의 브랜치를 `dev`로 바꾼다.
 
 ---
 
@@ -91,7 +86,7 @@ git pull --ff-only origin feature_app_merge
 git rev-parse --short HEAD
 ```
 
-배포에 사용한 `feature_app_merge` HEAD는 `447efb1`이다.
+`git rev-parse --short HEAD` 출력은 배포 기록에 남긴다. 문서에 특정 커밋을 고정하면 다음 배포 때 오래된 값이 되므로 현재 HEAD를 명령으로 확인한다.
 
 **이미지 빌드 및 컨테이너 실행**
 
@@ -155,6 +150,15 @@ docker run -d \
   water-meter-api
 ```
 
+업데이트 후에는 다음 명령으로 실제 이미지와 외부 연결을 확인한다.
+
+```bash
+docker ps --filter name=water-api
+docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' water-api
+curl -fsS http://localhost:8000/health
+curl -fsS http://13.53.120.64:8000/health
+```
+
 **로그 확인**
 
 ```bash
@@ -178,4 +182,5 @@ curl -fsS http://13.53.120.64:8000/health
 
 - `weights/` 폴더: YOLO 모델이 첫 요청 시 Google Drive에서 자동 다운로드됨 (수백MB, 시간 소요)
 - `data/data.db`: SQLite DB. EC2 인스턴스 삭제 시 데이터도 사라짐. 중요 데이터는 별도 백업 필요.
+- 현재 Android 앱은 `http://13.53.120.64:8000`에 연결하므로 cleartext HTTP를 허용함. 스토어 배포 전 도메인과 HTTPS 전환 필요.
 - Free tier는 12개월 무료. 이후 요금 발생.

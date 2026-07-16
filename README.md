@@ -1,111 +1,79 @@
 # smart-water-meter-kr
 
-계량기 사진 한 장에서 검침값을 자동으로 읽고, 사용량·요금·CO2를 계산하는 FastAPI 서버.
+수도 계량기 사진에서 검침값을 인식하고 사용량·요금·환경 영향을 계산하는 방울이 앱이다. FastAPI 백엔드와 Vite React 프론트, Capacitor Android 프로젝트로 구성된다.
 
 ## 구조
 
-```
-src/
-├── model/          # YOLO 추론 파이프라인
-│   ├── detector.py         # 모델1: 계량기 영역 검출
-│   ├── digit_detector.py   # 모델2: 숫자 0~9 검출
-│   ├── pipeline.py         # 전체 파이프라인
-│   └── yolox_utils.py      # 공유 유틸리티
-├── calculation/    # 요금 계산 (전국 17개 지역)
-│   ├── core.py             # 통합 진입점 (calc / calc_history)
-│   ├── engine.py           # 지역 요금표 + 누진 요금 공식
-│   ├── impact.py           # 에너지/CO2 환산
-│   └── rates/              # 17개 지역 요금표 (JSON)
-└── api/            # FastAPI 서버
-    ├── main.py             # 앱 진입점
-    ├── db.py               # SQLite 연결
-    ├── models.py           # DB 테이블 (Reading, Settings)
-    ├── schemas.py          # 요청/응답 스키마
-    └── routers/            # 엔드포인트
-        ├── regions.py      # GET /regions
-        ├── settings.py     # GET/PUT /settings
-        ├── meter.py        # POST /meter/scan, /meter/manual
-        └── history.py      # GET /history, /history/period
-
-tests/
-└── api/            # API 테스트 (pytest)
-
-docs/
-├── api-guide.md          # 엔드포인트 사용 가이드
-├── deployment-guide.md   # EC2 배포 가이드
-└── implementation-log.md # 구현 상세 기록
+```text
+src/                    FastAPI, YOLOX 추론, 17개 지역 요금 계산
+tests/                  Python API·도메인 테스트
+frontend/               React UI, Node 테스트, Capacitor Android
+docs/                   프론트 인수인계, API, EC2 배포 가이드
+output/android/         팀 확인용 Debug APK 안내와 로컬 APK
+output/pdf/             프론트 연동 인수인계 PDF
 ```
 
-> 모델 가중치는 첫 실행 시 자동으로 다운로드됩니다.
+구현 연결 흐름과 현재 검증 상태는 [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md)를 먼저 확인한다.
 
----
+## 백엔드 로컬 실행
 
-## 로컬 실행
-
-```bash
-# 의존성 설치
+```powershell
 uv sync
-
-# 서버 실행 (개발용 — 코드 변경 시 자동 재시작)
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Swagger UI: `http://localhost:8000/docs`
+Swagger UI는 `http://localhost:8000/docs`다.
 
-## 서버 실행 (EC2 백그라운드)
+## 프론트 로컬 실행
 
-```bash
-# 백그라운드 실행 — 터미널 닫아도 유지됨
-nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+Node.js 22 이상을 사용한다.
 
-# 서버 종료
-kill $(lsof -t -i:8000)
-
-# 재시작
-kill $(lsof -t -i:8000)
-nohup uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
-
-# 로그 확인
-tail -f nohup.out
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
----
+Vite는 기본적으로 `http://localhost:5173`에서 실행된다. 개발 API 주소는 `frontend/.env.development`, 운영 API 주소는 `frontend/.env.production`의 `VITE_API_BASE_URL`을 사용한다.
 
-## API 엔드포인트
+## Android Debug APK 빌드
 
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | /regions | 지원 지역 목록 |
-| GET | /settings | 기기 지역 설정 조회 |
-| PUT | /settings | 기기 지역 설정 변경 |
-| POST | /meter/scan | 이미지 → 검침값 인식 (저장 안 함) |
-| POST | /meter/manual | 검침값 저장 + 요금 계산 |
-| GET | /history | 전체 검침 이력 |
-| GET | /history/period | 기간별 검침 이력 |
+Capacitor 8, Android Studio 2025.2.1 이상, Android Studio 내장 JDK 21과 Android SDK 36을 사용한다.
 
-자세한 사용법: [docs/api-guide.md](docs/api-guide.md)
+```powershell
+cd frontend
+npm install
+npm run build
+npx cap sync android
 
----
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+
+cd android
+.\gradlew.bat assembleDebug
+```
+
+Gradle APK는 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`에 생성된다. 팀 확인용 APK와 설치 방법은 [Android 전달물 안내](output/android/README.md)를 참고한다.
 
 ## 테스트
 
-```bash
-uv run pytest tests/api/ -v
+```powershell
+# 저장소 루트
+uv run pytest
+
+# frontend
+node --test
+npm run build
 ```
 
----
+## 문서
 
-## 요금 계산 모듈 단독 사용
+- [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md).
+- [API 사용 가이드](docs/api-guide.md).
+- [EC2 Docker 배포 가이드](docs/deployment-guide.md).
+- `output/pdf/banguli-frontend-integration.pdf`.
 
-```python
-from src.calculation import calc
+## 운영 API
 
-calc("seoul", 1020, 1043)   # 전월 1020㎥, 당월 1043㎥
-# -> {'사용량_㎥': 23.0, '요금': {'합계': 29370, ...}, '영향': {'총CO2_kg': 6.57, ...}}
-```
-
----
-
-## 배포
-
-EC2 배포 방법: [docs/deployment-guide.md](docs/deployment-guide.md)
+운영 API는 EC2 Docker에서 `http://13.53.120.64:8000`으로 실행된다. 배포·업데이트·로그·재부팅 후 복구 절차는 [EC2 Docker 배포 가이드](docs/deployment-guide.md)를 따른다.
