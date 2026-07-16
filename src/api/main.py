@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.db import create_db_and_tables
-from src.api.routers import history, meter, regions, settings
+from src.api.routers import device, history, meter, regions, settings
 
 
 @asynccontextmanager
@@ -44,3 +44,4 @@ app.include_router(regions.router)
 app.include_router(settings.router)
 app.include_router(meter.router)
 app.include_router(history.router)
+app.include_router(device.router)
