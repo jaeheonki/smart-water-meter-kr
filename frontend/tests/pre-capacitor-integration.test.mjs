@@ -184,3 +184,11 @@ test('계량기 교체는 422 확인 뒤에만 명시적으로 새 기준값으�
   assert.match(cameraFlow, /baseline_reset/)
   assert.match(cameraFlow, /새 계량기 기준값을 저장했어요/)
 })
+
+test('계량기 교체 확인은 422가 발생한 저장 요청값을 끝까지 유지한다', () => {
+  assert.match(cameraFlow, /setBaselinePrompt\(\{[\s\S]*reading_m3:\s*readingM3,[\s\S]*confidence:\s*inputMode === 'auto' \? confidence : null,[\s\S]*input_mode:\s*inputMode/)
+  assert.match(cameraFlow, /reading_m3:\s*baselinePrompt\.reading_m3,[\s\S]*confidence:\s*baselinePrompt\.confidence,[\s\S]*input_mode:\s*baselinePrompt\.input_mode/)
+  assert.match(cameraFlow, /saveResult\.reading_m3\.toFixed\(3\)/)
+  assert.match(cameraFlow, /const changeDigit[\s\S]*if \(saving\) return;/)
+  assert.match(cameraFlow, /const returnToView[\s\S]*if \(saving\) return;/)
+})

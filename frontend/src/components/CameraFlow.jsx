@@ -138,7 +138,12 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 422) {
         setError('검침값이 이전 기록보다 작거나 같습니다. 값을 확인해주세요.');
-        setBaselinePrompt('offer');
+        setBaselinePrompt({
+          step: 'offer',
+          reading_m3: readingM3,
+          confidence: inputMode === 'auto' ? confidence : null,
+          input_mode: inputMode,
+        });
       } else {
         setError('저장에 실패했습니다. 다시 시도해주세요.');
       }
@@ -147,14 +152,14 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
     }
   };
 
-  const confirmBaseline = async (inputMode) => {
+  const confirmBaseline = async () => {
     setError('');
     setSaving(true);
     try {
       const result = await saveReading({
-        reading_m3: readingM3,
-        confidence: inputMode === 'auto' ? confidence : null,
-        input_mode: inputMode,
+        reading_m3: baselinePrompt.reading_m3,
+        confidence: baselinePrompt.confidence,
+        input_mode: baselinePrompt.input_mode,
         reset_baseline: true,
       });
       setSaveResult(result);
@@ -168,24 +173,26 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
   };
 
   const changeDigit = (index, value) => {
+    if (saving) return;
     setDigits(digits.map((digit, i) => (i === index ? value : digit)));
     setError('');
     setBaselinePrompt(null);
   };
 
   const returnToView = () => {
+    if (saving) return;
     setError('');
     setBaselinePrompt(null);
     setStep('view');
   };
 
-  const baselinePromptCard = (inputMode) => {
-    if (baselinePrompt === 'offer') {
+  const baselinePromptCard = () => {
+    if (baselinePrompt?.step === 'offer') {
       return (
-        <GhostBtn icon="swap_horiz" onClick={() => setBaselinePrompt('confirm')} style={{ marginTop: 10 }}>계량기를 교체했어요</GhostBtn>
+        <GhostBtn icon="swap_horiz" onClick={() => setBaselinePrompt({ ...baselinePrompt, step: 'confirm' })} style={{ marginTop: 10 }}>계량기를 교체했어요</GhostBtn>
       );
     }
-    if (baselinePrompt !== 'confirm') return null;
+    if (baselinePrompt?.step !== 'confirm') return null;
     return (
       <Card style={{ marginTop: 12, background: '#FFF6D8', borderColor: '#F3DF9B' }}>
         <div className="jua" style={{ fontSize: 18, color: BGC.ink }}>새 계량기 기준값으로 저장할까요?</div>
@@ -194,7 +201,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           <GhostBtn onClick={() => { setBaselinePrompt(null); setError(''); }} style={{ flex: 1 }}>취소</GhostBtn>
-          <PrimaryBtn icon="check" onClick={() => confirmBaseline(inputMode)} disabled={saving} style={{ flex: 1.4 }}>
+          <PrimaryBtn icon="check" onClick={confirmBaseline} disabled={saving} style={{ flex: 1.4 }}>
             {saving ? '저장 중…' : '기준값으로 저장'}
           </PrimaryBtn>
         </div>
@@ -305,7 +312,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           </Card>
 
           {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
-          {baselinePromptCard('manual')}
+          {baselinePromptCard()}
           <PrimaryBtn icon="check" onClick={() => valid && confirmReading('manual')} disabled={!valid || saving} style={{ marginTop: 14 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
         </div>
@@ -369,7 +376,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
             <PrimaryBtn icon="check" onClick={() => valid && confirmReading('auto')} disabled={!valid || saving} style={{ flex: 1.4 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
           {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
-          {baselinePromptCard('auto')}
+          {baselinePromptCard()}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12, color: BGC.sub, fontSize: 11.5 }}>
             <MIcon name="school" size={14} color={BGC.sub}></MIcon>
             확정한 값은 검침 기록으로 저장돼요
@@ -385,7 +392,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
           <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>새 계량기 기준값을 저장했어요</div>
           <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 이 값을 기준으로 계산을 시작할게요.</div>
-          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{readingM3.toFixed(3)} ㎥</div>
+          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
         <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
@@ -399,7 +406,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
           <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>첫 검침값을 저장했어요!</div>
           <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 사용량과 요금을 계산해 드릴게요.</div>
-          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{readingM3.toFixed(3)} ㎥</div>
+          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
         <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: true, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
