@@ -149,7 +149,7 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
           <input type="checkbox" checked={Boolean(st.notificationEnabled)} disabled={notificationPending}
             onChange={(ev) => { void changeNotification(ev.target.checked) }}></input>
         </label>
-        <input type="time" value={notificationTime} disabled={notificationPending}
+        <input type="time" value={notificationTime} disabled={!st.notificationEnabled || notificationPending}
           onChange={(ev) => changeNotificationTime(ev.target.value)} style={inputStyle}></input>
         <div style={{ fontSize: 12, color: BGC.sub, marginTop: 8 }}>검침을 완료한 날에는 알림을 보내지 않아요.</div>
         {notificationError === 'permission-denied' && (

@@ -126,7 +126,7 @@ test('알림 기본 상태와 설정 화면 계약을 제공한다', () => {
   assert.match(settings, /검침을 완료한 날에는 알림을 보내지 않아요\./)
   assert.match(settings, /알림 권한이 꺼져 있어요\. 다시 허용해 주세요\./)
   assert.match(settings, /알림 시간을 저장하지 못했습니다\. 다시 시도해 주세요\./)
-  assert.match(settings, /disabled=\{notificationPending\}/)
+  assert.match(settings, /type=["']time["'][\s\S]*disabled=\{!st\.notificationEnabled \|\| notificationPending\}/)
 })
 
 test('알림 설정은 성공 뒤에만 저장하고 권한 거절과 예약 오류를 구분한다', () => {
