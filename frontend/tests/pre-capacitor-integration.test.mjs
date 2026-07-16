@@ -191,4 +191,5 @@ test('계량기 교체 확인은 422가 발생한 저장 요청값을 끝까지 
   assert.match(cameraFlow, /saveResult\.reading_m3\.toFixed\(3\)/)
   assert.match(cameraFlow, /const changeDigit[\s\S]*if \(saving\) return;/)
   assert.match(cameraFlow, /const returnToView[\s\S]*if \(saving\) return;/)
+  assert.match(cameraFlow, /<GhostBtn onClick=\{\(\) => \{ if \(saving\) return;/)
 })

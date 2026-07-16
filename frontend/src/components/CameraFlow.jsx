@@ -200,7 +200,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           기존 기록은 그대로 보관하고, 교체 직전 구간은 사용량을 계산하지 않아요.
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <GhostBtn onClick={() => { setBaselinePrompt(null); setError(''); }} style={{ flex: 1 }}>취소</GhostBtn>
+          <GhostBtn onClick={() => { if (saving) return; setBaselinePrompt(null); setError(''); }} style={{ flex: 1 }}>취소</GhostBtn>
           <PrimaryBtn icon="check" onClick={confirmBaseline} disabled={saving} style={{ flex: 1.4 }}>
             {saving ? '저장 중…' : '기준값으로 저장'}
           </PrimaryBtn>
