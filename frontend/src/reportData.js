@@ -49,6 +49,25 @@ export function getPeriodDateRange(period, now = new Date()) {
   }
 }
 
+export function getReportDateRanges(period, from, to, now = new Date()) {
+  if (period === '날짜지정') {
+    return {
+      current: { from, to },
+      previous: getPreviousDateRange(from, to),
+    }
+  }
+  const range = getPeriodDateRange(period, now)
+  return {
+    current: { from: range.from, to: range.to },
+    previous: { from: range.previousFrom, to: range.previousTo },
+  }
+}
+
+export function formatReportDateRange(range) {
+  const format = (label) => label.replaceAll('-', '.')
+  return `${format(range.from)} ~ ${format(range.to)}`
+}
+
 export function summarizeHistory(history, period, now = new Date()) {
   const range = getPeriodDateRange(period, now)
 

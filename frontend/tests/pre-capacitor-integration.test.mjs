@@ -88,6 +88,33 @@ test('리포트는 로딩, 오류 재시도, 빈 이력 상태를 제공한다',
   assert.match(report, /표시할 검침 이력이 없습니다/)
 })
 
+test('리포트는 기본 기간과 날짜 지정의 이번·이전 범위를 표시용으로 제공한다', async () => {
+  const { getReportDateRanges, formatReportDateRange } = await import('../src/reportData.js')
+
+  const weekly = getReportDateRanges('주간', '', '', new Date('2026-07-16T12:00:00'))
+  assert.deepEqual(weekly, {
+    current: { from: '2026-07-10', to: '2026-07-16' },
+    previous: { from: '2026-07-03', to: '2026-07-09' },
+  })
+  assert.equal(formatReportDateRange(weekly.current), '2026.07.10 ~ 2026.07.16')
+
+  assert.deepEqual(
+    getReportDateRanges('날짜지정', '2026-07-08', '2026-07-14'),
+    {
+      current: { from: '2026-07-08', to: '2026-07-14' },
+      previous: { from: '2026-07-01', to: '2026-07-07' },
+    },
+  )
+})
+
+test('리포트는 로딩과 빈 상태를 포함해 이번·이전 기간 날짜를 표시한다', () => {
+  assert.match(report, /getReportDateRanges/)
+  assert.match(report, /formatReportDateRange/)
+  assert.match(report, /이번 기간/)
+  assert.match(report, /이전 기간 사용량/)
+  assert.match(report, /이전 기간/)
+})
+
 test('주간 기간은 오늘을 포함한 정확히 7일과 바로 이전 7일이다', async () => {
   const { getPeriodDateRange } = await import('../src/reportData.js')
 

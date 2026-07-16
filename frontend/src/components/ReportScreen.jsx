@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import BG from '../mockData.js'
 import { getHistory, getHistoryPeriod } from '../api.js'
-import { getPreviousDateRange, summarizeCustomHistory, summarizeHistory } from '../reportData.js'
+import { formatReportDateRange, getPreviousDateRange, getReportDateRanges, summarizeCustomHistory, summarizeHistory } from '../reportData.js'
 import { BGC, MIcon, Card, SectionLabel, Segmented, ScreenHead, Chip } from './ui.jsx'
 
 function ReportScreen({ usage, recorded, goal }) {
@@ -45,7 +45,10 @@ function ReportScreen({ usage, recorded, goal }) {
     return () => { active = false; };
   }, [period, from, to, isCustom, reloadKey]);
 
-  const periodLabel = isCustom ? `${from} ~ ${to}` : period;
+  const ranges = getReportDateRanges(period, from, to, now);
+  const currentRangeLabel = formatReportDateRange(ranges.current);
+  const previousRangeLabel = formatReportDateRange(ranges.previous);
+  const periodLabel = isCustom ? currentRangeLabel : period;
   const mTotal = summary?.currentTotalLiters || 0;
   const e = BG.energyOf(mTotal);
   const currentTotal = summary?.currentTotalLiters || 0;
@@ -78,6 +81,9 @@ function ReportScreen({ usage, recorded, goal }) {
           <input type="date" value={to} min={from} onChange={(ev) => setTo(ev.target.value)} style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: BGC.ink, background: '#fff' }}></input>
         </div>
       )}
+      <div style={{ margin: '8px 2px 0', textAlign: 'center', color: BGC.sub, fontSize: 12.5, fontWeight: 700 }}>
+        이번 기간 {currentRangeLabel}
+      </div>
     </>
   );
 
@@ -149,13 +155,19 @@ function ReportScreen({ usage, recorded, goal }) {
 
       <Card style={{ marginTop: 12 }}>
         <SectionLabel icon="trending_down" right={diffPct > 0 && <Chip icon="check_circle" color="#2C8A60" bg="#E8F6EF">{diffPct}% 절감</Chip>}>방울이 키우기 전후</SectionLabel>
-        {[['이전 기간 사용량', previousTotal, '#C9DFF0'], ['이번 기간 사용량', currentTotal, 'linear-gradient(90deg,#7BCBFF,#2E86C9)']].map(([k, v, bg]) => (
-          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
-            <span style={{ width: 110, fontSize: 12, fontWeight: 700, color: BGC.sub }}>{k}</span>
-            <div style={{ flex: 1, height: 16, borderRadius: 99, background: '#EFF6FC', overflow: 'hidden' }}>
-              <div style={{ width: (v / Math.max(1, previousTotal, currentTotal)) * 100 + '%', height: '100%', borderRadius: 99, background: bg }}></div>
+        {[
+          ['이전 기간 사용량', previousRangeLabel, previousTotal, '#C9DFF0'],
+          ['이번 기간 사용량', currentRangeLabel, currentTotal, 'linear-gradient(90deg,#7BCBFF,#2E86C9)'],
+        ].map(([label, rangeLabel, value, background]) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+            <div style={{ width: 128 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: BGC.sub }}>{label}</div>
+              <div style={{ fontSize: 10.5, color: '#9FB9CC', marginTop: 2 }}>{rangeLabel}</div>
             </div>
-            <span className="jua" style={{ fontSize: 14, color: BGC.ink, width: 44, textAlign: 'right' }}>{v}L</span>
+            <div style={{ flex: 1, height: 16, borderRadius: 99, background: '#EFF6FC', overflow: 'hidden' }}>
+              <div style={{ width: (value / Math.max(1, previousTotal, currentTotal)) * 100 + '%', height: '100%', borderRadius: 99, background }}></div>
+            </div>
+            <span className="jua" style={{ fontSize: 14, color: BGC.ink, width: 44, textAlign: 'right' }}>{value}L</span>
           </div>
         ))}
         <div style={{ fontSize: 12, color: BGC.sub, marginTop: 8, textAlign: 'center' }}>매일 기록한 효과예요 — 방울이가 자랑스러워해요!</div>
