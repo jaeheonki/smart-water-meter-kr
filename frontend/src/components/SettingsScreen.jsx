@@ -5,7 +5,7 @@ import { REGION_LABELS } from '../regions.js'
 import ReplacementHistoryScreen from './ReplacementHistoryScreen.jsx'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
-function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh, onResetApplication }) {
+function SettingsScreen({ st, patch, onNotificationChange, onNotificationRefresh, onResetApplication }) {
   const [regionCodes, setRegionCodes] = useState([])
   const [currentRegion, setCurrentRegion] = useState(null)
   const [loadingRegions, setLoadingRegions] = useState(true)
@@ -198,19 +198,6 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
             <PrimaryBtn icon="refresh" onClick={failedRegion ? () => selectRegion(failedRegion) : loadRegions} style={{ marginTop: 8 }}>다시 시도</PrimaryBtn>
           </div>
         )}
-      </Card>
-
-      <Card style={{ marginTop: 12 }}>
-        <SectionLabel icon="replay">처음부터</SectionLabel>
-        <button className="press" onClick={onReplayOnboarding} style={{
-          width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          marginTop: 4, padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
-          border: `1.5px solid ${BGC.line}`, background: '#fff', color: BGC.sky, fontFamily: 'Jua', fontSize: 15,
-        }}>
-          <MIcon name="replay" size={18} color={BGC.sky}></MIcon>
-          처음부터 보기
-        </button>
-        <div style={{ fontSize: 12, color: BGC.sub, marginTop: 8 }}>온보딩을 다시 보고 앱을 처음 상태로 되돌려요. (보유 코인·아이템은 유지)</div>
       </Card>
 
       <Card style={{ marginTop: 12, border: '1.5px solid #F1B5B5', background: '#FFF8F8' }}>

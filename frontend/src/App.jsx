@@ -136,14 +136,6 @@ function App() {
       setSavingInitialRegion(false)
     }
   }
-  const replayOnboarding = () => {
-    setSt((previous) => {
-      const keep = { coins: previous.coins, owned: previous.owned, equipped: previous.equipped }
-      const next = { ...DEFAULT_STATE, ...keep }
-      localStorage.setItem(STORE_KEY, JSON.stringify(next))
-      return next
-    })
-  }
   const resetApplication = async () => {
     await deleteDeviceData()
     await notificationService.disable()
@@ -191,7 +183,7 @@ function App() {
       home: <HomeScreen app={app} />,
       ledger: <LedgerScreen usage={usage} recorded={st.recorded} goal={goal} onNav={nav} unit={unit} tariff={tariff} />,
       report: <ReportScreen usage={usage} recorded={st.recorded} goal={goal} />,
-      settings: <SettingsScreen st={st} patch={patch} onReplayOnboarding={replayOnboarding}
+      settings: <SettingsScreen st={st} patch={patch}
         onNotificationChange={updateNotificationSettings} onNotificationRefresh={refreshNotificationSettings}
         onResetApplication={resetApplication} />,
       shop: <ShopScreen coins={st.coins} owned={st.owned} equipped={st.equipped} placed={st.placed}

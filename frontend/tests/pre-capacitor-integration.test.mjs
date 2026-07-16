@@ -192,9 +192,15 @@ test('검침 완료와 교체 이력은 공용 UTC 시각 변환 helper를 사�
 })
 
 test('설정 진입 시 알림을 새로고치고 알림 제어 콜백을 전달한다', () => {
-  assert.match(settings, /function SettingsScreen\(\{ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh, onResetApplication \}\)/)
+  assert.match(settings, /function SettingsScreen\(\{ st, patch, onNotificationChange, onNotificationRefresh, onResetApplication \}\)/)
   assert.match(settings, /useEffect\(\(\) => \{[\s\S]*if \(st\.notificationEnabled\)[\s\S]*onNotificationRefresh\(\)[\s\S]*\}, \[\]\)/)
   assert.match(app, /<SettingsScreen[\s\S]*onNotificationChange=\{updateNotificationSettings\}[\s\S]*onNotificationRefresh=\{refreshNotificationSettings\}/)
+})
+
+test('설정은 전체 앱 초기화만 제공하고 처음부터 보기를 제거한다', () => {
+  assert.doesNotMatch(settings, /처음부터 보기|onReplayOnboarding/)
+  assert.doesNotMatch(app, /replayOnboarding|onReplayOnboarding/)
+  assert.match(settings, /전체 앱 초기화/)
 })
 
 test('글자 크기 크게는 1.15 배율을 저장한다', () => {
