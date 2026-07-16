@@ -33,7 +33,7 @@
 - Consumes: `create_db_and_tables(engine=None)`.
 - Produces: `Reading.is_baseline: bool`, 기존 DB에도 반복 안전하게 열을 추가하는 `_ensure_reading_baseline_column(engine)`.
 
-- [ ] **Step 1: 기존 스키마 마이그레이션 실패 테스트를 작성한다.**
+- [x] **Step 1: 기존 스키마 마이그레이션 실패 테스트를 작성한다.**
 
 `tests/api/test_db.py`의 첫 줄에는 `# 기존 SQLite 스키마를 반복 안전하게 확장하는 DB 초기화 테스트`를 넣고 다음 테스트를 작성한다.
 
@@ -65,13 +65,13 @@ def test_create_db_adds_baseline_column_to_legacy_reading_table(tmp_path):
     assert "is_baseline" in columns
 ```
 
-- [ ] **Step 2: RED를 확인한다.**
+- [x] **Step 2: RED를 확인한다.**
 
 Run: `uv run pytest tests/api/test_db.py -v`
 
 Expected: `is_baseline` 열이 없어 assertion이 실패한다.
 
-- [ ] **Step 3: 모델과 반복 안전한 마이그레이션을 최소 구현한다.**
+- [x] **Step 3: 모델과 반복 안전한 마이그레이션을 최소 구현한다.**
 
 `Reading`에 다음 필드를 추가한다.
 
@@ -97,7 +97,7 @@ def create_db_and_tables(engine=None):
     _ensure_reading_baseline_column(selected_engine)
 ```
 
-- [ ] **Step 4: GREEN과 전체 백엔드 회귀를 확인한다.**
+- [x] **Step 4: GREEN과 전체 백엔드 회귀를 확인한다.**
 
 Run: `uv run pytest tests/api/test_db.py -v`
 
@@ -107,7 +107,7 @@ Run: `uv run pytest -q`
 
 Expected: 전체 테스트가 통과하고 기존 Starlette 경고 외 신규 경고가 없다.
 
-- [ ] **Step 5: 커밋한다.**
+- [x] **Step 5: 커밋한다.**
 
 ```bash
 git add src/api/db.py src/api/models.py tests/api/test_db.py
@@ -127,7 +127,7 @@ git commit -m "feat: 계량기 교체 기준점 스키마 추가"
 - Consumes: `Reading.is_baseline`.
 - Produces: `ManualRequest.reset_baseline: bool`, `ManualResponse.baseline_reset: bool`, 기준점 직전 구간을 생략한 `/history`와 `/history/period`.
 
-- [ ] **Step 1: 기준점 저장 API의 실패 테스트를 작성한다.**
+- [x] **Step 1: 기준점 저장 API의 실패 테스트를 작성한다.**
 
 `tests/api/test_meter.py`에 다음 테스트를 추가한다.
 
@@ -166,13 +166,13 @@ def test_manual_saves_decreasing_reading_as_new_baseline(client, session):
 
 기존 최초 검침 테스트에는 `assert data["baseline_reset"] is False`를 추가한다. 기존 감소·동일값 거절 테스트는 그대로 유지해 명시적 기준점 요청 없이는 저장되지 않음을 보장한다.
 
-- [ ] **Step 2: 기준점 저장 API의 RED를 확인한다.**
+- [x] **Step 2: 기준점 저장 API의 RED를 확인한다.**
 
 Run: `uv run pytest tests/api/test_meter.py -k "baseline or reject_decreasing or reject_equal" -v`
 
 Expected: `baseline_reset` 또는 `reset_baseline` 미지원으로 신규 테스트가 실패하고 기존 거절 테스트는 통과한다.
 
-- [ ] **Step 3: 요청·응답 스키마와 저장 분기를 구현한다.**
+- [x] **Step 3: 요청·응답 스키마와 저장 분기를 구현한다.**
 
 `src/api/schemas.py`를 다음 계약으로 확장한다.
 
@@ -244,13 +244,13 @@ return ManualResponse(
 )
 ```
 
-- [ ] **Step 4: 기준점 저장 GREEN을 확인한다.**
+- [x] **Step 4: 기준점 저장 GREEN을 확인한다.**
 
 Run: `uv run pytest tests/api/test_meter.py -k "baseline or reject_decreasing or reject_equal" -v`
 
 Expected: 기준점 저장과 기존 거절 테스트가 모두 통과한다.
 
-- [ ] **Step 5: 이력 분리 실패 테스트를 작성한다.**
+- [x] **Step 5: 이력 분리 실패 테스트를 작성한다.**
 
 `tests/api/test_history.py`의 `_r`을 다음과 같이 확장한다.
 
@@ -285,13 +285,13 @@ def test_history_skips_replacement_gap_and_resumes_after_baseline(client, sessio
     ]
 ```
 
-- [ ] **Step 6: 이력 분리 RED를 확인한다.**
+- [x] **Step 6: 이력 분리 RED를 확인한다.**
 
 Run: `uv run pytest tests/api/test_history.py -k replacement -v`
 
 Expected: 기존 `calc_history()`가 `1100 → 20`을 계산하며 `ValueError`로 실패한다.
 
-- [ ] **Step 7: 기준점으로 들어오는 구간만 생략한다.**
+- [x] **Step 7: 기준점으로 들어오는 구간만 생략한다.**
 
 `src/api/routers/history.py`의 단일 `calc_history(region, labeled)` 호출을 인접 쌍 순회로 바꾼다.
 
@@ -306,7 +306,7 @@ for previous, current in zip(readings, readings[1:]):
     ]))
 ```
 
-- [ ] **Step 8: 이력 GREEN, 동시성 회귀, 전체 백엔드 회귀를 확인한다.**
+- [x] **Step 8: 이력 GREEN, 동시성 회귀, 전체 백엔드 회귀를 확인한다.**
 
 Run: `uv run pytest tests/api/test_history.py -v`
 
@@ -316,7 +316,7 @@ Run: `uv run pytest -q`
 
 Expected: 모두 통과하며 기준점 행은 동시성 잠금 안에서 저장된다.
 
-- [ ] **Step 9: 커밋한다.**
+- [x] **Step 9: 커밋한다.**
 
 ```bash
 git add src/api/schemas.py src/api/routers/meter.py src/api/routers/history.py tests/api/test_meter.py tests/api/test_history.py
@@ -334,7 +334,7 @@ git commit -m "feat: 계량기 교체 기준점부터 검침 계산 재시작"
 - Consumes: `saveReading({ reading_m3, confidence, input_mode, reset_baseline })`, `ManualResponse.baseline_reset`.
 - Produces: 감소값 422 후 제안 → 설명 확인 → 기준점 저장 → 교체 완료 화면 흐름.
 
-- [ ] **Step 1: 프론트 계약의 실패 테스트를 작성한다.**
+- [x] **Step 1: 프론트 계약의 실패 테스트를 작성한다.**
 
 `pre-capacitor-integration.test.mjs`에서 `api.js`도 읽고 다음 계약을 추가한다.
 
@@ -352,13 +352,13 @@ test('계량기 교체 확인은 명시적인 기준점 요청으로 다시 저�
 })
 ```
 
-- [ ] **Step 2: 프론트 RED를 확인한다.**
+- [x] **Step 2: 프론트 RED를 확인한다.**
 
 Run: `node --test tests/pre-capacitor-integration.test.mjs`
 
 Expected: `reset_baseline`과 교체 확인 UI가 없어 신규 테스트가 실패한다.
 
-- [ ] **Step 3: API 클라이언트 계약을 확장한다.**
+- [x] **Step 3: API 클라이언트 계약을 확장한다.**
 
 `frontend/src/api.js`의 함수를 다음 형태로 바꾼다.
 
@@ -377,7 +377,7 @@ export async function saveReading({
 }
 ```
 
-- [ ] **Step 4: 교체 제안과 최종 확인 상태를 구현한다.**
+- [x] **Step 4: 교체 제안과 최종 확인 상태를 구현한다.**
 
 `CameraFlow`에 다음 상태를 추가한다.
 
@@ -477,7 +477,7 @@ if (step === 'done' && saveResult?.baseline_reset) {
 }
 ```
 
-- [ ] **Step 5: 프론트 GREEN과 빌드를 확인한다.**
+- [x] **Step 5: 프론트 GREEN과 빌드를 확인한다.**
 
 Run: `node --test tests/pre-capacitor-integration.test.mjs tests/task7-integration.test.mjs`
 
@@ -485,7 +485,7 @@ Run: `npm run build`
 
 Expected: 전체 Node 테스트와 Node 24 Vite 빌드가 통과한다. 기존 500kB 청크 경고 외 신규 경고가 없다.
 
-- [ ] **Step 6: 커밋한다.**
+- [x] **Step 6: 커밋한다.**
 
 ```bash
 git add frontend/src/api.js frontend/src/components/CameraFlow.jsx frontend/tests/pre-capacitor-integration.test.mjs
@@ -503,7 +503,7 @@ git commit -m "feat: 계량기 교체 기준값 확인 흐름 추가"
 - Consumes: `getPeriodDateRange(period, now)`, `getPreviousDateRange(from, to)`.
 - Produces: `getReportDateRanges(period, from, to, now)`, `formatReportDateRange(range)`, 항상 보이는 이번 기간과 비교 카드의 이전 기간 날짜.
 
-- [ ] **Step 1: 날짜 범위 순수 함수 실패 테스트를 작성한다.**
+- [x] **Step 1: 날짜 범위 순수 함수 실패 테스트를 작성한다.**
 
 ```javascript
 test('리포트는 기본 기간과 날짜 지정의 이번·이전 범위를 표시용으로 제공한다', async () => {
@@ -538,13 +538,13 @@ test('리포트는 로딩과 빈 상태를 포함해 이번·이전 기간 날�
 })
 ```
 
-- [ ] **Step 2: 리포트 RED를 확인한다.**
+- [x] **Step 2: 리포트 RED를 확인한다.**
 
 Run: `node --test --test-name-pattern="리포트" tests/pre-capacitor-integration.test.mjs`
 
 Expected: 신규 함수 export와 화면 표기가 없어 실패한다.
 
-- [ ] **Step 3: 날짜 범위와 포맷 순수 함수를 구현한다.**
+- [x] **Step 3: 날짜 범위와 포맷 순수 함수를 구현한다.**
 
 `frontend/src/reportData.js`에 추가한다.
 
@@ -569,7 +569,7 @@ export function formatReportDateRange(range) {
 }
 ```
 
-- [ ] **Step 4: 기간 컨트롤과 비교 카드에 날짜를 연결한다.**
+- [x] **Step 4: 기간 컨트롤과 비교 카드에 날짜를 연결한다.**
 
 `ReportScreen.jsx` import에 두 함수를 추가하고 다음 값을 계산한다.
 
@@ -617,7 +617,7 @@ const periodLabel = isCustom ? currentRangeLabel : period
 ))}
 ```
 
-- [ ] **Step 5: 리포트 GREEN과 전체 프론트 회귀·빌드를 확인한다.**
+- [x] **Step 5: 리포트 GREEN과 전체 프론트 회귀·빌드를 확인한다.**
 
 Run: `node --test tests/pre-capacitor-integration.test.mjs tests/task7-integration.test.mjs`
 
@@ -625,7 +625,7 @@ Run: `npm run build`
 
 Expected: 전체 테스트와 Node 24 빌드가 통과한다.
 
-- [ ] **Step 6: 커밋한다.**
+- [x] **Step 6: 커밋한다.**
 
 ```bash
 git add frontend/src/reportData.js frontend/src/components/ReportScreen.jsx frontend/tests/pre-capacitor-integration.test.mjs
@@ -642,7 +642,7 @@ git commit -m "feat: 에너지 리포트에 비교 기간 날짜 표시"
 - Consumes: Task 1~4의 커밋.
 - Produces: Capacitor Task 9 시작 여부를 판단할 수 있는 검증 결과.
 
-- [ ] **Step 1: 전체 자동 검증을 새로 실행한다.**
+- [x] **Step 1: 전체 자동 검증을 새로 실행한다.**
 
 Run: `uv run pytest -q`
 
@@ -654,7 +654,7 @@ Run: `git diff --check`
 
 Expected: 모든 명령이 종료 코드 0이며 기존 경고 외 신규 오류가 없다.
 
-- [ ] **Step 2: 로컬 API 흐름을 새 기기 ID로 확인한다.**
+- [x] **Step 2: 로컬 API 흐름을 새 기기 ID로 확인한다.**
 
 순서대로 `1000` 일반 저장, `20` 일반 저장 422, 이력 불변, `20` 기준점 저장 200, `35` 일반 저장, `/history` 조회를 실행한다. 이력에는 `1000→20`이 없고 `20→35` 사용량 15㎥만 존재해야 한다.
 
@@ -666,11 +666,11 @@ curl -X POST http://127.0.0.1:8000/meter/manual -H "X-Device-ID: replacement-e2e
 curl http://127.0.0.1:8000/history -H "X-Device-ID: replacement-e2e"
 ```
 
-- [ ] **Step 3: 로컬 브라우저에서 두 기능을 확인한다.**
+- [x] **Step 3: 로컬 브라우저에서 두 기능을 확인한다.**
 
 감소값 입력 후 교체 제안, 설명 확인, 취소 시 미저장, 확정 시 교체 완료 화면을 확인한다. 주간·월간·연간·날짜 지정의 이번 기간과 비교 카드의 이전 기간 날짜를 확인한다.
 
-- [ ] **Step 4: 전체 변경을 독립 리뷰한다.**
+- [x] **Step 4: 전체 변경을 독립 리뷰한다.**
 
 설계 커밋의 부모부터 최신 구현 커밋까지 검토해 Critical·Important가 없어야 한다. 발견 시 해당 태스크로 돌아가 TDD로 수정하고 재검토한다.
 
@@ -682,7 +682,7 @@ curl http://127.0.0.1:8000/history -H "X-Device-ID: replacement-e2e"
 
 내부·외부 `/health`, 고유 기기 ID의 기준점 저장 흐름, `/history` 분리 결과, 기존 계량기 크롭의 `/meter/scan` `234.918㎥` 결과를 확인한다.
 
-- [ ] **Step 7: 사용자 확인을 받는다.**
+- [x] **Step 7: 사용자 확인을 받는다.**
 
 실제 계량기 사진 E2E, 교체 UI, 리포트 기간 표기를 사용자가 확인할 수 있도록 로컬 서버를 실행한다. 확인 전에는 Capacitor Task 9를 시작하지 않는다.
 
