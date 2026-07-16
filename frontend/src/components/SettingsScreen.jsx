@@ -4,13 +4,17 @@ import { getRegions, getSettings, saveSettings } from '../api.js'
 import { REGION_LABELS } from '../regions.js'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
-function SettingsScreen({ st, patch, onReplayOnboarding }) {
+function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh }) {
   const [regionCodes, setRegionCodes] = useState([])
   const [currentRegion, setCurrentRegion] = useState(null)
   const [loadingRegions, setLoadingRegions] = useState(true)
   const [regionError, setRegionError] = useState(false)
   const [savingRegion, setSavingRegion] = useState(false)
   const [failedRegion, setFailedRegion] = useState(null)
+  const [notificationPending, setNotificationPending] = useState(false)
+  const [notificationError, setNotificationError] = useState(null)
+  const [notificationRetry, setNotificationRetry] = useState(null)
+  const [notificationTime, setNotificationTime] = useState(st.notificationTime || '20:00')
   const set = (k, v) => patch({ [k]: v });
   const inputStyle = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '11px 13px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: BGC.ink, background: '#fff' };
   const labelStyle = { fontSize: 12.5, fontWeight: 800, color: BGC.sub };
@@ -35,6 +39,42 @@ function SettingsScreen({ st, patch, onReplayOnboarding }) {
   }
 
   useEffect(() => { loadRegions() }, [])
+  useEffect(() => {
+    if (st.notificationEnabled) {
+      setNotificationPending(true)
+      void onNotificationRefresh()
+        .then((result) => {
+          if (!result.enabled) setNotificationError('permission-denied')
+        })
+        .catch(() => {
+          setNotificationRetry({ enabled: true, time: notificationTime })
+          setNotificationError('schedule-error')
+        })
+        .finally(() => { setNotificationPending(false) })
+    }
+  }, [])
+
+  const changeNotification = async (enabled, time = notificationTime) => {
+    setNotificationPending(true)
+    setNotificationError(null)
+    setNotificationRetry(null)
+    try {
+      const result = await onNotificationChange({ enabled, time })
+      if (enabled && !result.enabled) setNotificationError('permission-denied')
+    } catch {
+      setNotificationTime(st.notificationTime || '20:00')
+      setNotificationRetry({ enabled, time })
+      setNotificationError('schedule-error')
+    } finally {
+      setNotificationPending(false)
+    }
+  }
+
+  const changeNotificationTime = (time) => {
+    setNotificationTime(time)
+    if (st.notificationEnabled) void changeNotification(true, time)
+    else patch({ notificationTime: time })
+  }
 
   const selectRegion = async (code) => {
     setSavingRegion(true)
@@ -67,7 +107,33 @@ function SettingsScreen({ st, patch, onReplayOnboarding }) {
 
       <Card style={{ marginTop: 12 }}>
         <SectionLabel icon="text_fields">글자 크기</SectionLabel>
-        <Segmented options={['작게', '보통', '크게']} value={fsLabel} onChange={(v) => set('fontScale', v === '작게' ? 0.9 : v === '크게' ? 1.05 : 1)}></Segmented>
+        <Segmented options={['작게', '보통', '크게']} value={fsLabel} onChange={(v) => set('fontScale', v === '작게' ? 0.9 : v === '크게' ? 1.15 : 1)}></Segmented>
+      </Card>
+
+      <Card style={{ marginTop: 12 }}>
+        <SectionLabel icon="notifications">매일 검침 알림</SectionLabel>
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ fontWeight: 800, color: BGC.ink }}>알림 받기</span>
+          <input type="checkbox" checked={Boolean(st.notificationEnabled)} disabled={notificationPending}
+            onChange={(ev) => { void changeNotification(ev.target.checked) }}></input>
+        </label>
+        <input type="time" value={notificationTime} disabled={notificationPending}
+          onChange={(ev) => changeNotificationTime(ev.target.value)} style={inputStyle}></input>
+        <div style={{ fontSize: 12, color: BGC.sub, marginTop: 8 }}>검침을 완료한 날에는 알림을 보내지 않아요.</div>
+        {notificationError === 'permission-denied' && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: '#C26A1B' }}>알림 권한이 꺼져 있어요. 다시 허용해 주세요.</div>
+            <PrimaryBtn icon="refresh" disabled={notificationPending}
+              onClick={() => { void changeNotification(true, notificationTime) }}>다시 시도</PrimaryBtn>
+          </div>
+        )}
+        {notificationError === 'schedule-error' && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: '#C26A1B' }}>알림 시간을 저장하지 못했습니다. 다시 시도해 주세요.</div>
+            <PrimaryBtn icon="refresh" disabled={notificationPending}
+              onClick={() => { void changeNotification(notificationRetry.enabled, notificationRetry.time) }}>다시 시도</PrimaryBtn>
+          </div>
+        )}
       </Card>
 
       <Card style={{ marginTop: 12 }}>

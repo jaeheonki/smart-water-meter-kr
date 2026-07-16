@@ -11,6 +11,7 @@ import ShopScreen, { SHOP_ITEMS, wornImgFor, spriteFor, framesFor, facesFor } fr
 import SettingsScreen, { AttendanceModal, RegionModal } from './components/SettingsScreen.jsx'
 import { saveSettings } from './api.js'
 import { getRegionCode } from './regions.js'
+import { notificationService, localDateKey } from './notifications.js'
 import './App.css'
 
 const STORE_KEY = 'banguli_app_v1'
@@ -20,6 +21,7 @@ const DEFAULT_STATE = {
   owned: ['rain', 'monstera'], equipped: null, placed: ['monstera'],
   userName: '우리집', dolphinName: '방울이', fontScale: 1, ledgerUnit: 'L', region: '서울',
   regionSet: false, lastAttend: null, decorPos: {}, pendingEdit: false,
+  notificationEnabled: false, notificationTime: '20:00', lastReadingDate: null,
   room: { theme: null },
 }
 
@@ -42,6 +44,29 @@ function App() {
   }, [])
   useEffect(() => { localStorage.setItem(STORE_KEY, JSON.stringify(st)) }, [st])
   useEffect(() => {
+    if (st.notificationEnabled) {
+      void notificationService.refresh({
+        time: st.notificationTime,
+        lastReadingDate: st.lastReadingDate,
+      }).then((result) => {
+        if (!result.enabled) patch({ notificationEnabled: false })
+      }).catch(() => {})
+    }
+  }, [])
+  useEffect(() => {
+    let listener
+    let disposed = false
+    void notificationService.listenForActions(() => patch({ screen: 'camera', camStart: 'view' }))
+      .then((handle) => {
+        if (disposed) void handle.remove()
+        else listener = handle
+      })
+    return () => {
+      disposed = true
+      void listener?.remove()
+    }
+  }, [])
+  useEffect(() => {
     const root = document.getElementById('bgScreen')
     if (!root) return
     const fontScale = st.fontScale || 1
@@ -57,6 +82,39 @@ function App() {
 
   const patch = (value) => setSt((state) => ({ ...state, ...value }))
   const nav = (screen) => patch({ screen })
+  const updateNotificationSettings = async ({ enabled, time }) => {
+    const result = enabled
+      ? await notificationService.enable({ time, lastReadingDate: st.lastReadingDate })
+      : (await notificationService.disable(), { enabled: false })
+    if (enabled && !result.enabled) {
+      patch({ notificationEnabled: false })
+      return result
+    }
+    patch({ notificationEnabled: enabled, notificationTime: time })
+    return { enabled }
+  }
+  const refreshNotificationSettings = async () => {
+    const result = await notificationService.refresh({
+      time: st.notificationTime,
+      lastReadingDate: st.lastReadingDate,
+    })
+    if (!result.enabled) patch({ notificationEnabled: false })
+    return result
+  }
+  const completeReading = ({ firstReading, usage: nextUsage, reward }) => {
+    const lastReadingDate = localDateKey()
+    patch({
+      recorded: !firstReading,
+      usage: nextUsage,
+      coins: st.coins + reward,
+      screen: 'home',
+      camStart: null,
+      lastReadingDate,
+    })
+    if (st.notificationEnabled) {
+      void notificationService.refresh({ time: st.notificationTime, lastReadingDate })
+    }
+  }
   const selectInitialRegion = async (region) => {
     const code = getRegionCode(region)
     if (!code) {
@@ -101,7 +159,7 @@ function App() {
     content = (
       <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'}
         onClose={() => patch({ screen: 'home', camStart: null })}
-        onDone={({ firstReading, usage: nextUsage, reward }) => patch({ recorded: !firstReading, usage: nextUsage, coins: st.coins + reward, screen: 'home', camStart: null })}
+        onDone={completeReading}
       />
     )
   } else {
@@ -120,7 +178,8 @@ function App() {
       home: <HomeScreen app={app} />,
       ledger: <LedgerScreen usage={usage} recorded={st.recorded} goal={goal} onNav={nav} unit={unit} tariff={tariff} />,
       report: <ReportScreen usage={usage} recorded={st.recorded} goal={goal} />,
-      settings: <SettingsScreen st={st} patch={patch} onReplayOnboarding={replayOnboarding} />,
+      settings: <SettingsScreen st={st} patch={patch} onReplayOnboarding={replayOnboarding}
+        onNotificationChange={updateNotificationSettings} onNotificationRefresh={refreshNotificationSettings} />,
       shop: <ShopScreen coins={st.coins} owned={st.owned} equipped={st.equipped} placed={st.placed}
         onBuy={(id, price) => patch({ coins: st.coins - price, owned: [...st.owned, id] })}
         onEquip={(id) => patch({ equipped: id })}

@@ -17,6 +17,43 @@ const expectedRegions = {
   changwon: '창원', jeju: '제주',
 }
 
+test('알림 기본 상태와 설정 화면 계약을 제공한다', () => {
+  assert.match(app, /notificationEnabled:\s*false/)
+  assert.match(app, /notificationTime:\s*['"]20:00['"]/)
+  assert.match(app, /lastReadingDate:\s*null/)
+  assert.match(settings, /type=["']time["']/)
+  assert.match(settings, /검침을 완료한 날에는 알림을 보내지 않아요\./)
+  assert.match(settings, /알림 권한이 꺼져 있어요\. 다시 허용해 주세요\./)
+  assert.match(settings, /알림 시간을 저장하지 못했습니다\. 다시 시도해 주세요\./)
+  assert.match(settings, /disabled=\{notificationPending\}/)
+})
+
+test('알림 설정은 성공 뒤에만 저장하고 권한 거절과 예약 오류를 구분한다', () => {
+  assert.match(app, /const updateNotificationSettings = async \(\{ enabled, time \}\) => \{[\s\S]*notificationService\.enable\(\{ time, lastReadingDate: st\.lastReadingDate \}\)[\s\S]*notificationService\.disable\(\)[\s\S]*if \(enabled && !result\.enabled\) \{[\s\S]*patch\(\{ notificationEnabled: false \}\)[\s\S]*patch\(\{ notificationEnabled: enabled, notificationTime: time \}\)/)
+  assert.match(settings, /const result = await onNotificationChange\(\{ enabled, time \}\)/)
+  assert.match(settings, /changeNotification\(ev\.target\.checked\)/)
+  assert.match(settings, /onClick=\{\(\) => \{ void changeNotification\(true, notificationTime\) \}\}/)
+  assert.match(settings, /catch \{[\s\S]*setNotificationError\(['"]schedule-error['"]\)/)
+  assert.match(settings, /setNotificationRetry\(\{ enabled, time \}\)/)
+  assert.match(settings, /changeNotification\(notificationRetry\.enabled, notificationRetry\.time\)/)
+})
+
+test('검침 완료 시 로컬 날짜를 저장하고 켜진 알림을 다시 예약한다', () => {
+  assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKey\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
+  assert.match(app, /const completeReading = \(\{ firstReading, usage: nextUsage, reward \}\) => \{[\s\S]*const lastReadingDate = localDateKey\(\)[\s\S]*lastReadingDate,[\s\S]*if \(st\.notificationEnabled\) \{[\s\S]*notificationService\.refresh\(\{ time: st\.notificationTime, lastReadingDate \}\)/)
+  assert.match(app, /<CameraFlow[\s\S]*onDone=\{completeReading\}/)
+})
+
+test('설정 진입 시 알림을 새로고치고 알림 제어 콜백을 전달한다', () => {
+  assert.match(settings, /function SettingsScreen\(\{ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh \}\)/)
+  assert.match(settings, /useEffect\(\(\) => \{[\s\S]*if \(st\.notificationEnabled\)[\s\S]*onNotificationRefresh\(\)[\s\S]*\}, \[\]\)/)
+  assert.match(app, /<SettingsScreen[\s\S]*onNotificationChange=\{updateNotificationSettings\}[\s\S]*onNotificationRefresh=\{refreshNotificationSettings\}/)
+})
+
+test('글자 크기 크게는 1.15 배율을 저장한다', () => {
+  assert.match(settings, /v === ['"]크게['"] \? 1\.15 : 1/)
+})
+
 test('Material Symbols와 한글 글꼴을 로드하고 아이콘 리가를 그대로 표시한다', () => {
   assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.googleapis\.com["']\s*\/?>/)
   assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.gstatic\.com["']\s+crossorigin\s*\/?>/)
