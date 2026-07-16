@@ -9,6 +9,7 @@ const styles = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
+const api = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8')
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -172,4 +173,14 @@ test('스캔 요청 오류는 cancelled 메시지와 무관하게 서버 연결 
 
 test('동일하거나 감소한 검침값의 422 안내를 백엔드 검증 조건과 맞춘다', () => {
   assert.match(cameraFlow, /caught instanceof ApiError && caught\.status === 422[\s\S]*검침값이 이전 기록보다 작거나 같습니다\. 값을 확인해주세요\./)
+})
+
+test('계량기 교체는 422 확인 뒤에만 명시적으로 새 기준값으로 저장한다', () => {
+  assert.match(api, /saveReading\(\{\s*reading_m3,\s*confidence = null,\s*input_mode,\s*reset_baseline = false\s*\}\)/)
+  assert.match(api, /JSON\.stringify\(\{\s*reading_m3,\s*confidence,\s*input_mode,\s*reset_baseline\s*\}\)/)
+  assert.match(cameraFlow, /계량기를 교체했어요/)
+  assert.match(cameraFlow, /기존 기록은 그대로 보관/)
+  assert.match(cameraFlow, /reset_baseline:\s*true/)
+  assert.match(cameraFlow, /baseline_reset/)
+  assert.match(cameraFlow, /새 계량기 기준값을 저장했어요/)
 })

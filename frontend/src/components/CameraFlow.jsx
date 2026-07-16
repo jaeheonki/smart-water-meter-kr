@@ -73,9 +73,13 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
   const [saveResult, setSaveResult] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [baselinePrompt, setBaselinePrompt] = useState(null);
   const flaggedIdx = 4;
 
-  useEffect(() => { setDigits(sc.digits.split('').map(Number)); }, [scenario]);
+  useEffect(() => {
+    setDigits(sc.digits.split('').map(Number));
+    setBaselinePrompt(null);
+  }, [scenario, sc.digits]);
 
   const reading = parseInt(digits.join(''), 10);
   const readingM3 = reading / 1000;
@@ -88,6 +92,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
 
   const capture = async () => {
     setError('');
+    setBaselinePrompt(null);
     setStep('scan');
     let file;
     try {
@@ -120,6 +125,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
 
   const confirmReading = async (inputMode) => {
     setError('');
+    setBaselinePrompt(null);
     setSaving(true);
     try {
       const result = await saveReading({
@@ -130,12 +136,70 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
       setSaveResult(result);
       setStep('done');
     } catch (caught) {
-      setError(caught instanceof ApiError && caught.status === 422
-        ? '검침값이 이전 기록보다 작거나 같습니다. 값을 확인해주세요.'
-        : '저장에 실패했습니다. 다시 시도해주세요.');
+      if (caught instanceof ApiError && caught.status === 422) {
+        setError('검침값이 이전 기록보다 작거나 같습니다. 값을 확인해주세요.');
+        setBaselinePrompt('offer');
+      } else {
+        setError('저장에 실패했습니다. 다시 시도해주세요.');
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmBaseline = async (inputMode) => {
+    setError('');
+    setSaving(true);
+    try {
+      const result = await saveReading({
+        reading_m3: readingM3,
+        confidence: inputMode === 'auto' ? confidence : null,
+        input_mode: inputMode,
+        reset_baseline: true,
+      });
+      setSaveResult(result);
+      setBaselinePrompt(null);
+      setStep('done');
+    } catch {
+      setError('저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeDigit = (index, value) => {
+    setDigits(digits.map((digit, i) => (i === index ? value : digit)));
+    setError('');
+    setBaselinePrompt(null);
+  };
+
+  const returnToView = () => {
+    setError('');
+    setBaselinePrompt(null);
+    setStep('view');
+  };
+
+  const baselinePromptCard = (inputMode) => {
+    if (baselinePrompt === 'offer') {
+      return (
+        <GhostBtn icon="swap_horiz" onClick={() => setBaselinePrompt('confirm')} style={{ marginTop: 10 }}>계량기를 교체했어요</GhostBtn>
+      );
+    }
+    if (baselinePrompt !== 'confirm') return null;
+    return (
+      <Card style={{ marginTop: 12, background: '#FFF6D8', borderColor: '#F3DF9B' }}>
+        <div className="jua" style={{ fontSize: 18, color: BGC.ink }}>새 계량기 기준값으로 저장할까요?</div>
+        <div style={{ color: BGC.sub, fontSize: 13.5, lineHeight: 1.6, marginTop: 7 }}>
+          기존 기록은 그대로 보관하고, 교체 직전 구간은 사용량을 계산하지 않아요.
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+          <GhostBtn onClick={() => { setBaselinePrompt(null); setError(''); }} style={{ flex: 1 }}>취소</GhostBtn>
+          <PrimaryBtn icon="check" onClick={() => confirmBaseline(inputMode)} disabled={saving} style={{ flex: 1.4 }}>
+            {saving ? '저장 중…' : '기준값으로 저장'}
+          </PrimaryBtn>
+        </div>
+      </Card>
+    );
   };
 
   const darkTop = (title) => (
@@ -172,7 +236,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '0 0 22px' }}>
             {!scanning && (
-              <button className="press" onClick={() => setStep('manual')} style={{
+              <button className="press" onClick={() => { setError(''); setBaselinePrompt(null); setStep('manual'); }} style={{
                 background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 99,
                 padding: '9px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7,
                 color: '#fff', fontFamily: 'Jua', fontSize: 14,
@@ -208,7 +272,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
     return (
         <div data-screen-label="검침 숫자 입력하기" className="fade-up" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 18px 22px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0' }}>
-            <button className="press" onClick={() => setStep('view')} style={{ background: '#fff', border: `1.5px solid ${BGC.line}`, borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <button className="press" onClick={returnToView} style={{ background: '#fff', border: `1.5px solid ${BGC.line}`, borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <MIcon name="arrow_back" size={20} color={BGC.ink}></MIcon>
             </button>
             <div className="jua" style={{ flex: 1, textAlign: 'center', fontSize: 18, color: BGC.ink }}>검침 숫자 입력하기</div>
@@ -222,7 +286,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
               {digits.map((d, i) => (
                 <React.Fragment key={i}>
                   {i === 4 && <div className="jua" style={{ alignSelf: 'center', fontSize: 22, color: BGC.sub }}>.</div>}
-                  <DialCol val={d} red={i >= 4} flagged={false} onChange={(v) => setDigits(digits.map((x, j) => (j === i ? v : x)))}></DialCol>
+                  <DialCol val={d} red={i >= 4} flagged={false} onChange={(v) => changeDigit(i, v)}></DialCol>
                 </React.Fragment>
               ))}
             </div>
@@ -241,6 +305,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           </Card>
 
           {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
+          {baselinePromptCard('manual')}
           <PrimaryBtn icon="check" onClick={() => valid && confirmReading('manual')} disabled={!valid || saving} style={{ marginTop: 14 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
         </div>
@@ -252,7 +317,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
     return (
         <div data-screen-label="OCR 다이얼 보정" className="fade-up" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0' }}>
-            <button className="press" onClick={() => setStep('view')} style={{ background: '#fff', border: `1.5px solid ${BGC.line}`, borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <button className="press" onClick={returnToView} style={{ background: '#fff', border: `1.5px solid ${BGC.line}`, borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <MIcon name="arrow_back" size={20} color={BGC.ink}></MIcon>
             </button>
             <div className="jua" style={{ flex: 1, textAlign: 'center', fontSize: 18, color: BGC.ink }}>인식 결과 확인</div>
@@ -281,7 +346,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
               {digits.map((d, i) => (
                 <React.Fragment key={i}>
                   {i === 4 && <div className="jua" style={{ alignSelf: 'center', fontSize: 22, color: BGC.sub }}>.</div>}
-                  <DialCol val={d} red={i >= 4} flagged={i === flaggedIdx} onChange={(v) => setDigits(digits.map((x, j) => (j === i ? v : x)))}></DialCol>
+                  <DialCol val={d} red={i >= 4} flagged={i === flaggedIdx} onChange={(v) => changeDigit(i, v)}></DialCol>
                 </React.Fragment>
               ))}
             </div>
@@ -300,16 +365,31 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
           </Card>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-            <GhostBtn icon="photo_camera" onClick={() => setStep('view')} style={{ flex: 1 }}>다시 찍기</GhostBtn>
+            <GhostBtn icon="photo_camera" onClick={returnToView} style={{ flex: 1 }}>다시 찍기</GhostBtn>
             <PrimaryBtn icon="check" onClick={() => valid && confirmReading('auto')} disabled={!valid || saving} style={{ flex: 1.4 }}>{saving ? '저장 중…' : '이 값으로 확정'}</PrimaryBtn>
           </div>
           {error && <div role="alert" style={{ color: BGC.red, fontSize: 13.5, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{error}</div>}
+          {baselinePromptCard('auto')}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12, color: BGC.sub, fontSize: 11.5 }}>
             <MIcon name="school" size={14} color={BGC.sub}></MIcon>
             확정한 값은 검침 기록으로 저장돼요
           </div>
         </div>
 );
+  }
+
+  if (step === 'done' && saveResult?.baseline_reset) {
+    return (
+      <div data-screen-label="계량기 교체 기준값 저장 완료" className="fade-up" style={{ flex: 1, minHeight: 0, padding: '24px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Card style={{ textAlign: 'center' }}>
+          <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
+          <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>새 계량기 기준값을 저장했어요</div>
+          <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 이 값을 기준으로 계산을 시작할게요.</div>
+          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{readingM3.toFixed(3)} ㎥</div>
+        </Card>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+      </div>
+    );
   }
 
   if (step === 'done' && saveResult?.first_reading) {

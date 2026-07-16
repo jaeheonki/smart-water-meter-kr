@@ -34,11 +34,11 @@ export async function scanMeter(file) {
 }
 
 // 검침값 확정 저장 + 요금 계산. 현재값 ≤ 이전값이면 422 (ApiError.status === 422)
-export async function saveReading({ reading_m3, confidence = null, input_mode }) {
+export async function saveReading({ reading_m3, confidence = null, input_mode, reset_baseline = false }) {
   return request("/meter/manual", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reading_m3, confidence, input_mode }),
+    body: JSON.stringify({ reading_m3, confidence, input_mode, reset_baseline }),
   });
 }
 
