@@ -32,7 +32,7 @@
 - Consumes: `frontend/public/img/base_happy2.png`, `frontend/package.json`, `frontend/capacitor.config.json`, `.env.development`, `.env.production`, `output/android/banguli-debug.apk` 전달 정보.
 - Produces: 저장소 전체, 프론트 개발, 산출물 정책, Android APK 상세로 분리된 네 README.
 
-- [ ] **Step 1: 루트 README를 전체 진입점으로 재작성한다**
+- [x] **Step 1: 루트 README를 전체 진입점으로 재작성한다**
 
 상단에 아래 형식의 대표 이미지와 소개를 배치한다.
 
@@ -46,7 +46,7 @@
 
 그 아래에 `주요 기능`, `기술 구성`, `빠른 시작`, `저장소 구조`, `테스트`, `모바일 앱`, `문서`, `팀원` 순서로 짧은 섹션을 둔다. `data/`는 로컬 SQLite이며 Git에서 제외되고 EC2 데이터와 별개라는 설명을 포함한다. 팀원은 김재헌(PM), 정승호, 노승원, 유수빈을 표시하며 `jaeheonki`만 이미지와 링크를 적용한다.
 
-- [ ] **Step 2: 프론트 README를 작성한다**
+- [x] **Step 2: 프론트 README를 작성한다**
 
 다음 내용을 실제 경로와 명령으로 작성한다.
 
@@ -56,7 +56,7 @@
 
 웹 검증 명령은 `node --test`, `npm run build`를 사용한다. Android는 `npm run build`, `npx cap sync android`, `frontend/android/gradlew.bat assembleDebug` 흐름을 설명한다. iOS는 Mac, Xcode 26+, HTTPS가 필요하며 현재 완료 범위가 아님을 명시한다.
 
-- [ ] **Step 3: output README를 작성한다**
+- [x] **Step 3: output README를 작성한다**
 
 `output/`은 전달 산출물 디렉터리이며 APK 바이너리는 Git에서 제외한다는 정책을 기록한다. 현재 구조는 아래처럼 표시한다.
 
@@ -70,11 +70,11 @@ output/
 
 향후 iOS 결과물은 검증된 뒤 `output/ios/`로 분리할 수 있지만 현재 생성된 iOS 산출물은 없다고 명시한다.
 
-- [ ] **Step 4: Android README의 중복 정책을 상위 문서로 연결한다**
+- [x] **Step 4: Android README의 중복 정책을 상위 문서로 연결한다**
 
 문서 상단에 `[산출물 공통 정책](../README.md)` 링크를 추가한다. 기존 APK 메타데이터, 설치, 빌드 재현, 확인된 항목과 남은 실기기 확인은 변경하지 않는다.
 
-- [ ] **Step 5: README 경로와 오래된 참조를 검증한다**
+- [x] **Step 5: README 경로와 오래된 참조를 검증한다**
 
 Run:
 
@@ -88,7 +88,7 @@ git diff --check -- README.md frontend/README.md output/README.md output/android
 
 Expected: `output/pdf`, `TODO`, `TBD` 검색 결과가 없고 세 `Test-Path`가 모두 `True`, `git diff --check`가 종료 코드 0이다.
 
-- [ ] **Step 6: README 변경만 커밋한다**
+- [x] **Step 6: README 변경만 커밋한다**
 
 ```powershell
 git add -- README.md frontend/README.md output/README.md output/android/README.md
@@ -109,31 +109,31 @@ Expected: 기존 `frontend/src/App.jsx`, 패키지 파일, Android 프로젝트�
 - Consumes: 현재 `feature_app_merge` 작업 트리와 잠금 파일.
 - Produces: 머지 준비 판단에 사용할 fresh 테스트·빌드 결과.
 
-- [ ] **Step 1: Python 테스트를 실행한다**
+- [x] **Step 1: Python 테스트를 실행한다**
 
 Run: `uv run pytest`
 
 Expected: 42 tests pass. 기존 Starlette/httpx 경고는 실패로 보지 않되 결과에 기록한다.
 
-- [ ] **Step 2: 프론트 Node 테스트를 실행한다**
+- [x] **Step 2: 프론트 Node 테스트를 실행한다**
 
 Run from `frontend`: `node --test`
 
 Expected: 59 tests pass.
 
-- [ ] **Step 3: Vite 프로덕션 빌드를 실행한다**
+- [x] **Step 3: Vite 프로덕션 빌드를 실행한다**
 
 Run from `frontend`: `npm run build`
 
 Expected: 종료 코드 0. 기존 500kB 청크 경고는 결과에 기록한다.
 
-- [ ] **Step 4: Capacitor Android 동기화를 실행한다**
+- [x] **Step 4: Capacitor Android 동기화를 실행한다**
 
 Run from `frontend`: `npx cap sync android`
 
 Expected: Camera와 Local Notifications 플러그인이 등록되고 종료 코드 0이다.
 
-- [ ] **Step 5: Android Debug APK를 빌드한다**
+- [x] **Step 5: Android Debug APK를 빌드한다**
 
 Run from `frontend/android` after setting Android Studio JDK 21 and SDK variables: `./gradlew.bat assembleDebug`
 
@@ -150,7 +150,7 @@ Expected: `BUILD SUCCESSFUL`과 `app/build/outputs/apk/debug/app-debug.apk` 생�
 - Consumes: Task 2의 fresh 검증 결과.
 - Produces: 머지 가능 변경, 남은 차단 조건, 사용자 승인 요청.
 
-- [ ] **Step 1: 브랜치와 작업 트리를 확인한다**
+- [x] **Step 1: 브랜치와 작업 트리를 확인한다**
 
 Run:
 
@@ -162,7 +162,7 @@ git log --oneline --decorate dev..feature_app_merge
 
 Expected: 현재 브랜치는 `feature_app_merge`다. 미커밋 Task 9 파일은 별도로 식별한다.
 
-- [ ] **Step 2: dev 대비 변경 범위를 리뷰한다**
+- [x] **Step 2: dev 대비 변경 범위를 리뷰한다**
 
 Run:
 
@@ -174,7 +174,7 @@ git diff --check dev...feature_app_merge
 
 Expected: 충돌 표시나 whitespace 오류가 없다. 문서, 백엔드, 프론트와 Android 변경이 의도한 범위인지 분류한다.
 
-- [ ] **Step 3: 머지 차단 조건을 보고한다**
+- [x] **Step 3: 머지 차단 조건을 보고한다**
 
 다음을 명시한다.
 
