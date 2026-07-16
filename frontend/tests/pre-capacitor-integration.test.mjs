@@ -1,6 +1,6 @@
 // Capacitor 전환 전 핵심 프론트 연동 계약을 검증하는 테스트
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
@@ -10,6 +10,8 @@ const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', im
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
 const api = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8')
+const replacementHistoryUrl = new URL('../src/components/ReplacementHistoryScreen.jsx', import.meta.url)
+const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(replacementHistoryUrl, 'utf8') : ''
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -293,4 +295,29 @@ test('계량기 교체 확인은 422가 발생한 저장 요청값을 끝까지 
   assert.match(cameraFlow, /const changeDigit[\s\S]*if \(saving\) return;/)
   assert.match(cameraFlow, /const returnToView[\s\S]*if \(saving\) return;/)
   assert.match(cameraFlow, /<GhostBtn onClick=\{\(\) => \{ if \(saving\) return;/)
+})
+
+test('계량기 교체 이력 API는 전용 경로를 호출한다', () => {
+  assert.match(api, /export async function getReplacementHistory\(\) \{\s*return request\(['"]\/history\/replacements['"]\)\s*\}/)
+})
+
+test('계량기 교체 이력 화면은 API와 네 가지 화면 상태를 제공한다', () => {
+  assert.match(replacementHistory, /import\s+\{\s*getReplacementHistory\s*\}\s+from\s+['"]\.\.\/api\.js['"]/)
+  assert.match(replacementHistory, /useEffect\(\(\) => \{ loadHistory\(\) \}, \[\]\)/)
+  assert.match(replacementHistory, /계량기 교체 이력을 불러오는 중입니다\./)
+  assert.match(replacementHistory, /계량기 교체 이력이 없습니다\./)
+  assert.match(replacementHistory, /계량기 교체 이력을 불러오지 못했습니다\./)
+  assert.match(replacementHistory, /다시 시도/)
+  assert.match(replacementHistory, /교체일/)
+  assert.match(replacementHistory, /이전 마지막 검침/)
+  assert.match(replacementHistory, /새 계량기 기준값/)
+  assert.match(replacementHistory, /previous_reading_m3 === null[\s\S]*이전 기록 없음/)
+  assert.match(replacementHistory, /input_mode === ['"]auto['"][\s\S]*사진 인식[\s\S]*직접 입력/)
+})
+
+test('설정의 계량기 교체 이력 카드는 별도 화면을 열고 뒤로 닫는다', () => {
+  assert.match(settings, /import ReplacementHistoryScreen from ['"]\.\/ReplacementHistoryScreen\.jsx['"]/)
+  assert.match(settings, /const \[showReplacementHistory, setShowReplacementHistory\] = useState\(false\)/)
+  assert.match(settings, /if \(showReplacementHistory\) return <ReplacementHistoryScreen onBack=\{\(\) => setShowReplacementHistory\(false\)\}><\/ReplacementHistoryScreen>/)
+  assert.match(settings, /계량기 교체 이력[\s\S]*onClick=\{\(\) => setShowReplacementHistory\(true\)\}/)
 })

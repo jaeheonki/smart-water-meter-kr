@@ -46,6 +46,10 @@ export async function getHistory() {
   return request("/history");
 }
 
+export async function getReplacementHistory() {
+  return request('/history/replacements')
+}
+
 export async function getHistoryPeriod(start, end) {
   return request(`/history/period?start=${start}&end=${end}`);
 }

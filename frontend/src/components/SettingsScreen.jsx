@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { getRegions, getSettings, saveSettings } from '../api.js'
 import { REGION_LABELS } from '../regions.js'
+import ReplacementHistoryScreen from './ReplacementHistoryScreen.jsx'
 import { BGC, MIcon, Card, PrimaryBtn, SectionLabel, Segmented, ScreenHead } from './ui.jsx'
 
 function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, onNotificationRefresh }) {
@@ -15,6 +16,7 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
   const [notificationError, setNotificationError] = useState(null)
   const [notificationRetry, setNotificationRetry] = useState(null)
   const [notificationTime, setNotificationTime] = useState(st.notificationTime || '20:00')
+  const [showReplacementHistory, setShowReplacementHistory] = useState(false)
   const set = (k, v) => patch({ [k]: v });
   const inputStyle = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '11px 13px', borderRadius: 12, border: `1.5px solid ${BGC.line}`, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: BGC.ink, background: '#fff' };
   const labelStyle = { fontSize: 12.5, fontWeight: 800, color: BGC.sub };
@@ -94,6 +96,8 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
     }
   }
 
+  if (showReplacementHistory) return <ReplacementHistoryScreen onBack={() => setShowReplacementHistory(false)}></ReplacementHistoryScreen>
+
   return (
     <div data-screen-label="설정" className="fade-up" style={{ padding: '0 18px 100px' }}>
       <ScreenHead title="설정" sub="앱을 내 취향대로 맞춰보세요"></ScreenHead>
@@ -104,6 +108,14 @@ function SettingsScreen({ st, patch, onReplayOnboarding, onNotificationChange, o
         <input value={st.userName || ''} onChange={(ev) => set('userName', ev.target.value)} placeholder="우리집" style={inputStyle}></input>
         <div style={{ ...labelStyle, marginTop: 12 }}>방울이 이름</div>
         <input value={st.dolphinName || ''} onChange={(ev) => set('dolphinName', ev.target.value)} placeholder="방울이" style={inputStyle}></input>
+      </Card>
+
+      <Card style={{ marginTop: 12 }}>
+        <SectionLabel icon="history">계량기 교체 이력</SectionLabel>
+        <button className="press" onClick={() => setShowReplacementHistory(true)} style={{
+          width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+          border: `1.5px solid ${BGC.line}`, background: '#fff', color: BGC.sky, fontFamily: 'Jua', fontSize: 15,
+        }}>교체 이력 보기</button>
       </Card>
 
       <Card style={{ marginTop: 12 }}>
