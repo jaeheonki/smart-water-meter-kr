@@ -65,7 +65,7 @@ function DialCol({ val, red, flagged, onChange }) {
   );
 }
 
-function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
+function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone }) {
   const sc = BG.SCENARIOS[scenario];
   const [step, setStep] = useState(startStep || 'view'); // view → scan → confirm → done
   const [digits, setDigits] = useState(sc.digits.split('').map(Number));
@@ -133,6 +133,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
         confidence: inputMode === 'auto' ? confidence : null,
         input_mode: inputMode,
       });
+      onReadingSaved(result.recorded_at);
       setSaveResult(result);
       setStep('done');
     } catch (caught) {
@@ -162,6 +163,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onDone }) {
         input_mode: baselinePrompt.input_mode,
         reset_baseline: true,
       });
+      onReadingSaved(result.recorded_at);
       setSaveResult(result);
       setBaselinePrompt(null);
       setStep('done');

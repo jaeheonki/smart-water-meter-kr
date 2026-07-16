@@ -171,10 +171,34 @@ test('알림 시각 재시도 성공은 실패 당시 시각으로 로컬 입력
   assert.deepEqual(timeChanges, ['21:30'])
 })
 
-test('검침 완료 시 로컬 날짜를 저장하고 켜진 알림을 다시 예약한다', () => {
+test('검침 저장 성공 직후 일반 저장과 baseline 저장 모두 recorded_at을 App에 전달한다', () => {
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKey\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
-  assert.match(app, /const completeReading = \(\{ firstReading, usage: nextUsage, reward \}\) => \{[\s\S]*const lastReadingDate = localDateKey\(\)[\s\S]*lastReadingDate,[\s\S]*if \(st\.notificationEnabled\) \{[\s\S]*notificationService\.refresh\(\{ time: st\.notificationTime, lastReadingDate \}\)/)
-  assert.match(app, /<CameraFlow[\s\S]*onDone=\{completeReading\}/)
+  assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, onClose, onReadingSaved, onDone \}\)/)
+  assert.equal(cameraFlow.match(/onReadingSaved\(result\.recorded_at\)/g)?.length, 2)
+  assert.match(cameraFlow, /const confirmReading[\s\S]*await saveReading\([\s\S]*onReadingSaved\(result\.recorded_at\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.match(cameraFlow, /const confirmBaseline[\s\S]*await saveReading\([\s\S]*onReadingSaved\(result\.recorded_at\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.match(app, /<CameraFlow[\s\S]*onReadingSaved=\{recordReading\}[\s\S]*onDone=\{completeReading\}/)
+  const completeReading = app.match(/const completeReading = \([^\n]+\) => \{([\s\S]*?)\n  \}/)?.[1] ?? ''
+  assert.doesNotMatch(completeReading, /localDateKey|lastReadingDate|notificationService/)
+})
+
+test('서버 recorded_at의 UTC 자정 경계를 로컬 검침 날짜로 변환한다', () => {
+  const helperBody = app.match(
+    /function localDateKeyFromRecordedAt\(recordedAt\) \{([\s\S]*?)\n\}/,
+  )?.[1]
+  assert.ok(helperBody)
+  const localDateKeyInSeoul = (date) => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date).map(({ type, value }) => [type, value]))
+    return `${parts.year}-${parts.month}-${parts.day}`
+  }
+  const dateKey = new Function('localDateKey', 'recordedAt', helperBody)(
+    localDateKeyInSeoul,
+    '2026-07-16T15:30:00',
+  )
+
+  assert.equal(dateKey, '2026-07-17')
 })
 
 test('설정 진입 시 알림을 새로고치고 알림 제어 콜백을 전달한다', () => {

@@ -105,6 +105,19 @@ test('오늘 검침했거나 오늘 알림 시각이 지났으면 내일부터 �
   assert.equal(timePassed[0].schedule.at.getTime(), tomorrow)
 })
 
+test('같은 날짜와 시각의 새 예약 세대는 이전 세대와 ID가 겹치지 않는다', () => {
+  const settings = {
+    time: '20:00',
+    lastReadingDate: '2026-07-15',
+    now: new Date(2026, 6, 16, 19, 0),
+  }
+  const previous = buildReminderNotifications({ ...settings, generation: 1 })
+  const next = buildReminderNotifications({ ...settings, generation: 2 })
+  const previousIds = new Set(previous.map(({ id }) => id))
+
+  assert.ok(next.every(({ id }) => !previousIds.has(id)))
+})
+
 test('권한이 거절되면 예약하지 않고 비활성 사유를 반환한다', async () => {
   const plugin = createPlugin({ permission: 'denied' })
   const service = createNotificationService({ plugin, isNative: true })
@@ -115,6 +128,18 @@ test('권한이 거절되면 예약하지 않고 비활성 사유를 반환한�
   assert.equal(plugin.calls.requestPermissions, 1)
   assert.equal(plugin.calls.schedule.length, 0)
   assert.equal(plugin.calls.cancel.length, 0)
+})
+
+test('refresh에서 권한이 사후 거절되면 기존 owned 알림을 취소한다', async () => {
+  const owned = { id: 1, extra: { kind: REMINDER_KIND } }
+  const foreign = { id: 2, extra: { kind: 'another-feature' } }
+  const plugin = createPlugin({ permission: 'denied', pending: [owned, foreign] })
+  const service = createNotificationService({ plugin, isNative: true })
+
+  const result = await service.refresh({ time: '20:00', lastReadingDate: '2026-07-15' })
+
+  assert.deepEqual(result, { enabled: false, reason: 'permission-denied' })
+  assert.deepEqual(plugin.calls.cancel, [{ notifications: [owned] }])
 })
 
 test('비활성화하면 이 어댑터가 소유한 알림만 취소한다', async () => {
@@ -128,7 +153,38 @@ test('비활성화하면 이 어댑터가 소유한 알림만 취소한다', asy
   assert.deepEqual(plugin.calls.cancel, [{ notifications: [owned] }])
 })
 
-test('새 예약이 실패하면 취소했던 소유 알림을 복원하고 오류를 다시 던진다', async () => {
+test('진행 중 refresh 뒤에 요청한 disable은 마지막에 실행되어 새 알림도 제거한다', async () => {
+  const old = { id: 1, extra: { kind: REMINDER_KIND } }
+  let pending = [old]
+  let releaseSchedule
+  let markScheduleStarted
+  const scheduleGate = new Promise((resolve) => { releaseSchedule = resolve })
+  const scheduleStarted = new Promise((resolve) => { markScheduleStarted = resolve })
+  const plugin = {
+    async checkPermissions() { return { display: 'granted' } },
+    async getPending() { return { notifications: [...pending] } },
+    async schedule({ notifications }) {
+      markScheduleStarted()
+      await scheduleGate
+      pending.push(...notifications)
+    },
+    async cancel({ notifications }) {
+      const ids = new Set(notifications.map(({ id }) => id))
+      pending = pending.filter(({ id }) => !ids.has(id))
+    },
+  }
+  const service = createNotificationService({ plugin, isNative: true })
+
+  const refreshing = service.refresh({ time: '20:00', lastReadingDate: '2026-07-15' })
+  await scheduleStarted
+  const disabling = service.disable()
+  releaseSchedule()
+  await Promise.all([refreshing, disabling])
+
+  assert.deepEqual(pending, [])
+})
+
+test('새 예약이 계속 실패해도 기존 owned 알림을 취소하지 않는다', async () => {
   const error = new Error('schedule failed')
   const previous = { id: 1, extra: { kind: REMINDER_KIND } }
   const plugin = createPlugin({ pending: [previous], scheduleError: error })
@@ -138,9 +194,8 @@ test('새 예약이 실패하면 취소했던 소유 알림을 복원하고 오�
     service.refresh({ time: '20:00', lastReadingDate: '2026-07-15' }),
     error,
   )
-  assert.deepEqual(plugin.calls.cancel, [{ notifications: [previous] }])
-  assert.equal(plugin.calls.schedule.length, 2)
-  assert.deepEqual(plugin.calls.schedule[1], { notifications: [previous] })
+  assert.deepEqual(plugin.calls.cancel, [])
+  assert.equal(plugin.calls.schedule.length, 1)
 })
 
 test('알림 액션 중 camera 경로만 콜백을 실행한다', async () => {

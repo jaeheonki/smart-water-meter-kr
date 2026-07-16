@@ -12,17 +12,19 @@ export function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
-export function buildReminderNotifications({ time, lastReadingDate, now = new Date() }) {
+export function buildReminderNotifications({ time, lastReadingDate, now = new Date(), generation = 0 }) {
   const [hour, minute] = time.split(':').map(Number)
   const first = new Date(now)
   first.setHours(hour, minute, 0, 0)
   if (first <= now || localDateKey(first) === lastReadingDate) first.setDate(first.getDate() + 1)
+  const generationKey = (Math.floor(first.getTime() / 60000) + generation) % 30000000
+  const firstId = 100000000 + generationKey * REMINDER_DAYS
 
   return Array.from({ length: REMINDER_DAYS }, (_, offset) => {
     const at = new Date(first)
     at.setDate(first.getDate() + offset)
     return {
-      id: 100000000 + Number(localDateKey(at).replaceAll('-', '')),
+      id: firstId + offset,
       title: '방울이가 마를 것 같아요!',
       body: '오늘의 수도 계량기를 검침해 주세요.',
       schedule: { at, allowWhileIdle: false },
@@ -36,6 +38,8 @@ export function createNotificationService({
   plugin = LocalNotifications,
   isNative = Capacitor.isNativePlatform(),
 } = {}) {
+  let queue = Promise.resolve()
+  let generation = 0
   const owned = (notification) => notification.extra?.kind === REMINDER_KIND
   const pendingOwned = async () => (await plugin.getPending()).notifications.filter(owned)
   const cancelOwned = async (notifications) => {
@@ -46,25 +50,34 @@ export function createNotificationService({
     if (!isNative) return { enabled: true }
     let permission = await plugin.checkPermissions()
     if (permission.display !== 'granted' && requestPermission) permission = await plugin.requestPermissions()
-    if (permission.display !== 'granted') return { enabled: false, reason: 'permission-denied' }
+    if (permission.display !== 'granted') {
+      await cancelOwned(await pendingOwned())
+      return { enabled: false, reason: 'permission-denied' }
+    }
 
     const previous = await pendingOwned()
+    const notifications = buildReminderNotifications({
+      time,
+      lastReadingDate,
+      generation: ++generation,
+    })
+    await plugin.schedule({ notifications })
     await cancelOwned(previous)
-    try {
-      await plugin.schedule({ notifications: buildReminderNotifications({ time, lastReadingDate }) })
-      return { enabled: true }
-    } catch (error) {
-      if (previous.length) await plugin.schedule({ notifications: previous })
-      throw error
-    }
+    return { enabled: true }
+  }
+
+  const serialize = (operation) => {
+    const result = queue.then(operation)
+    queue = result.catch(() => {})
+    return result
   }
 
   return {
-    enable: (settings) => replace({ ...settings, requestPermission: true }),
-    refresh: (settings) => replace({ ...settings, requestPermission: false }),
-    disable: async () => {
+    enable: (settings) => serialize(() => replace({ ...settings, requestPermission: true })),
+    refresh: (settings) => serialize(() => replace({ ...settings, requestPermission: false })),
+    disable: () => serialize(async () => {
       if (isNative) await cancelOwned(await pendingOwned())
-    },
+    }),
     listenForActions: async (openCamera) => {
       if (!isNative) return { remove: async () => {} }
       return plugin.addListener('localNotificationActionPerformed', (event) => {
