@@ -19,6 +19,12 @@ const expectedRegions = {
   changwon: '창원', jeju: '제주',
 }
 
+test('신규 설치의 코인은 0에서 시작한다', () => {
+  const defaultState = app.match(/const DEFAULT_STATE = \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(defaultState)
+  assert.match(defaultState, /\bcoins:\s*0\b/)
+})
+
 test('기기 데이터 삭제 API는 204 응답을 JSON으로 읽지 않는다', async () => {
   const requestSource = api.match(/async function request\(path, options = \{\}\) \{[\s\S]*?\n\}/)?.[0]
   assert.ok(requestSource)

@@ -1,0 +1,9 @@
+{
+  "appId": "com.jjang.banguli",
+  "appName": "방울이",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

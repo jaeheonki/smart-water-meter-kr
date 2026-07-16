@@ -18,7 +18,7 @@ import './App.css'
 const STORE_KEY = 'banguli_app_v1'
 const DEFAULT_STATE = {
   onboarded: false, screen: 'home', house: '4인 이상',
-  recorded: false, usage: 0, coins: 9999,
+  recorded: false, usage: 0, coins: 0,
   owned: ['rain', 'monstera'], equipped: null, placed: ['monstera'],
   userName: '우리집', dolphinName: '방울이', fontScale: 1, ledgerUnit: 'L', region: '서울',
   regionSet: false, lastAttend: null, decorPos: {}, pendingEdit: false,
