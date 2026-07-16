@@ -59,12 +59,13 @@ def test_manual_first_reading(client):
     """첫 검침이면 first_reading=True, 요금 필드는 null."""
     resp = client.post(
         "/meter/manual",
-        json={"reading_m3": 1000.0, "input_mode": "manual"},
+        json={"reading_m3": 1000.0, "input_mode": "manual", "reset_baseline": True},
         headers=HEADERS_A,
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["first_reading"] is True
+    assert data["baseline_reset"] is False
     assert data["bill"] is None
     assert data["usage_m3"] is None
 
@@ -147,6 +148,37 @@ def test_manual_reject_equal_does_not_save_reading(client, session):
         select(Reading).where(Reading.device_id == HEADERS_A["X-Device-ID"])
     ).all()
     assert len(readings) == 1
+
+
+def test_manual_reset_baseline_saves_decreasing_reading(client, session):
+    """확인된 계량기 교체값은 계산 없이 새 기준점으로 저장한다."""
+    first = client.post(
+        "/meter/manual",
+        json={"reading_m3": 1000.0, "input_mode": "manual"},
+        headers=HEADERS_A,
+    )
+    assert first.status_code == 200
+
+    resp = client.post(
+        "/meter/manual",
+        json={"reading_m3": 20.0, "input_mode": "manual", "reset_baseline": True},
+        headers=HEADERS_A,
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["first_reading"] is False
+    assert data["baseline_reset"] is True
+    assert data["usage_m3"] is None
+    assert data["prev_reading_m3"] is None
+    assert data["bill"] is None
+    assert data["impact"] is None
+    readings = session.exec(
+        select(Reading)
+        .where(Reading.device_id == HEADERS_A["X-Device-ID"])
+        .order_by(Reading.recorded_at.asc())
+    ).all()
+    assert [row.is_baseline for row in readings] == [False, True]
 
 
 def test_manual_missing_header(client):

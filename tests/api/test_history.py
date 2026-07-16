@@ -9,7 +9,7 @@ from src.api.models import Reading
 HEADERS_A = {"X-Device-ID": "device-A"}
 
 
-def _r(session, device_id, reading_m3, year, month):
+def _r(session, device_id, reading_m3, year, month, is_baseline=False):
     """Reading을 지정 월에 직접 삽입하는 헬퍼."""
     session.add(Reading(
         device_id=device_id,
@@ -17,6 +17,7 @@ def _r(session, device_id, reading_m3, year, month):
         confidence=None,
         input_mode="manual",
         recorded_at=datetime(year, month, 15),
+        is_baseline=is_baseline,
     ))
     session.commit()
 
@@ -73,6 +74,22 @@ def test_history_no_region_defaults_to_seoul(client, session):
     items = client.get("/history", headers=HEADERS_A).json()
     assert len(items) == 1
     assert items[0]["bill_total"] > 0
+
+
+def test_history_replacement_skips_only_pair_entering_baseline(client, session):
+    """계량기 교체 직전 구간만 제외하고 전후의 정상 구간은 계산한다."""
+    _r(session, "device-A", 1000.0, 2026, 1)
+    _r(session, "device-A", 1100.0, 2026, 2)
+    _r(session, "device-A", 20.0, 2026, 3, is_baseline=True)
+    _r(session, "device-A", 35.0, 2026, 4)
+    client.put("/settings", json={"region": "seoul"}, headers=HEADERS_A)
+
+    items = client.get("/history", headers=HEADERS_A).json()
+
+    assert [(item["start_label"], item["end_label"], item["usage_m3"]) for item in items] == [
+        ("2026-03-15", "2026-04-15", 15.0),
+        ("2026-01-15", "2026-02-15", 100.0),
+    ]
 
 
 def test_history_missing_header(client):

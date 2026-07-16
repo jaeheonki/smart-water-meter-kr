@@ -35,8 +35,15 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
     if len(readings) < 2:
         return []
 
-    labeled = [(r.recorded_at.strftime("%Y-%m-%d"), r.reading_m3) for r in readings]
-    periods = calc_history(region, labeled)
+    periods = []
+    for prev, current in zip(readings, readings[1:]):
+        if current.is_baseline:
+            continue
+        labeled = [
+            (prev.recorded_at.strftime("%Y-%m-%d"), prev.reading_m3),
+            (current.recorded_at.strftime("%Y-%m-%d"), current.reading_m3),
+        ]
+        periods.extend(calc_history(region, labeled))
 
     items = [
         HistoryItem(

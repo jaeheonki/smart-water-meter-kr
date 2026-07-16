@@ -80,8 +80,8 @@ def post_manual(
     settings_row = session.get(Settings, device_id)
     region = (settings_row.region if settings_row else None) or "seoul"
 
-    # 요금 계산 — curr > prev 위반 시 422
-    if prev:
+    # 요금 계산 — 교체 기준점이 아니면서 curr > prev 위반 시 422
+    if prev and not body.reset_baseline:
         if body.reading_m3 <= prev.reading_m3:
             detail = (
                 f"당월 검침값({body.reading_m3})이 전월({prev.reading_m3})보다 작거나 같습니다. "
@@ -100,6 +100,7 @@ def post_manual(
         confidence=body.confidence,
         input_mode=body.input_mode,
         recorded_at=now,
+        is_baseline=bool(prev and body.reset_baseline),
     )
     session.add(reading)
     session.commit()
@@ -108,6 +109,14 @@ def post_manual(
     # 첫 검침이면 계산 없이 반환
     if not prev:
         return ManualResponse(reading_m3=body.reading_m3, recorded_at=now, first_reading=True)
+
+    if body.reset_baseline:
+        return ManualResponse(
+            reading_m3=body.reading_m3,
+            recorded_at=now,
+            first_reading=False,
+            baseline_reset=True,
+        )
 
     return ManualResponse(
         reading_m3=body.reading_m3,

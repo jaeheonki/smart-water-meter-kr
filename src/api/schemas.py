@@ -33,6 +33,7 @@ class ManualRequest(BaseModel):
     reading_m3: float                       # 확정된 검침값 (㎥)
     confidence: Optional[float] = None      # 스캔 신뢰도 (수동 입력 시 생략)
     input_mode: str = "manual"              # "auto" | "manual"
+    reset_baseline: bool = False            # 계량기 교체 후 새 계산 기준점 여부
 
 
 class BillSchema(BaseModel):
@@ -59,6 +60,7 @@ class ManualResponse(BaseModel):
     reading_m3: float                           # 저장된 검침값 (㎥)
     recorded_at: datetime                        # 저장 시각 (UTC)
     first_reading: bool                          # True이면 아래 필드 모두 null
+    baseline_reset: bool = False                 # 계량기 교체 기준점으로 저장했는지 여부
     usage_m3: Optional[float] = None             # 이번 달 사용량 (현재 - 이전)
     prev_reading_m3: Optional[float] = None      # 직전 검침값
     bill: Optional[BillSchema] = None            # 요금 세부 내역
