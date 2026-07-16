@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 from src.api.db import get_session
 from src.api.models import Reading, Settings
 from src.api.routers.settings import _get_device_id
-from src.api.schemas import HistoryItem
+from src.api.schemas import HistoryItem, ReplacementHistoryItem
 from src.calculation import calc_history
 
 router = APIRouter()
@@ -56,6 +56,29 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
         for p in reversed(periods)  # 최신 구간이 먼저
     ]
     return items
+
+
+@router.get("/history/replacements", response_model=list[ReplacementHistoryItem])
+def get_replacement_history(
+    device_id: str = Depends(_get_device_id),
+    session: Session = Depends(get_session),
+):
+    readings = session.exec(
+        select(Reading)
+        .where(Reading.device_id == device_id)
+        .order_by(Reading.recorded_at.asc())
+    ).all()
+    replacements = [
+        ReplacementHistoryItem(
+            replaced_at=reading.recorded_at,
+            previous_reading_m3=readings[index - 1].reading_m3 if index else None,
+            baseline_reading_m3=reading.reading_m3,
+            input_mode=reading.input_mode,
+        )
+        for index, reading in enumerate(readings)
+        if reading.is_baseline
+    ]
+    return list(reversed(replacements))
 
 
 @router.get("/history/period", response_model=list[HistoryItem])

@@ -76,6 +76,14 @@ class HistoryItem(BaseModel):
     co2_kg: float       # 해당 구간 CO2 배출량 (kg)
 
 
+class ReplacementHistoryItem(BaseModel):
+    """GET /history/replacements 응답의 교체 이력 한 줄."""
+    replaced_at: datetime
+    previous_reading_m3: Optional[float] = None
+    baseline_reading_m3: float
+    input_mode: str
+
+
 class SettingsResponse(BaseModel):
     """GET /settings 응답 및 PUT /settings 요청·응답."""
     region: Optional[str] = None    # 지역 코드 (예: "seoul"). 미설정이면 null

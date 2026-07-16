@@ -9,13 +9,13 @@ from src.api.models import Reading
 HEADERS_A = {"X-Device-ID": "device-A"}
 
 
-def _r(session, device_id, reading_m3, year, month, is_baseline=False):
+def _r(session, device_id, reading_m3, year, month, is_baseline=False, input_mode="manual"):
     """Reading을 지정 월에 직접 삽입하는 헬퍼."""
     session.add(Reading(
         device_id=device_id,
         reading_m3=reading_m3,
         confidence=None,
-        input_mode="manual",
+        input_mode=input_mode,
         recorded_at=datetime(year, month, 15),
         is_baseline=is_baseline,
     ))
@@ -95,6 +95,43 @@ def test_history_replacement_skips_only_pair_entering_baseline(client, session):
 def test_history_missing_header(client):
     """X-Device-ID 헤더 없으면 400."""
     assert client.get("/history").status_code == 400
+
+
+def test_replacement_history_returns_latest_baseline_first(client, session):
+    _r(session, "device-A", 1000.0, 2026, 1)
+    _r(session, "device-A", 20.0, 2026, 2, is_baseline=True, input_mode="auto")
+    _r(session, "device-A", 35.0, 2026, 3)
+    _r(session, "device-A", 5.0, 2026, 4, is_baseline=True)
+
+    response = client.get("/history/replacements", headers=HEADERS_A)
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "replaced_at": "2026-04-15T00:00:00",
+            "previous_reading_m3": 35.0,
+            "baseline_reading_m3": 5.0,
+            "input_mode": "manual",
+        },
+        {
+            "replaced_at": "2026-02-15T00:00:00",
+            "previous_reading_m3": 1000.0,
+            "baseline_reading_m3": 20.0,
+            "input_mode": "auto",
+        },
+    ]
+
+
+def test_replacement_history_is_device_scoped_and_allows_missing_previous(client, session):
+    _r(session, "device-A", 7.0, 2026, 2, is_baseline=True)
+    _r(session, "device-B", 900.0, 2026, 1)
+    _r(session, "device-B", 10.0, 2026, 2, is_baseline=True)
+
+    response = client.get("/history/replacements", headers=HEADERS_A)
+
+    assert response.status_code == 200
+    assert response.json()[0]["previous_reading_m3"] is None
+    assert len(response.json()) == 1
 
 
 # ─────────────────────────────────────────────
