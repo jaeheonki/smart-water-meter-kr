@@ -674,11 +674,11 @@ curl http://127.0.0.1:8000/history -H "X-Device-ID: replacement-e2e"
 
 설계 커밋의 부모부터 최신 구현 커밋까지 검토해 Critical·Important가 없어야 한다. 발견 시 해당 태스크로 돌아가 TDD로 수정하고 재검토한다.
 
-- [ ] **Step 5: `feature_app_merge`만 푸시하고 EC2를 갱신한다.**
+- [x] **Step 5: `feature_app_merge`만 푸시하고 EC2를 갱신한다.**
 
 원격 URL에 토큰을 넣지 않는다. GitHub 인증이 없으면 로컬 Git bundle을 전송해 EC2를 fast-forward한다. Docker 이미지를 성공적으로 빌드한 뒤에만 `water-api`를 `unless-stopped`, 기존 `data`·`weights` 볼륨으로 교체한다.
 
-- [ ] **Step 6: EC2 검증을 실행한다.**
+- [x] **Step 6: EC2 검증을 실행한다.**
 
 내부·외부 `/health`, 고유 기기 ID의 기준점 저장 흐름, `/history` 분리 결과, 기존 계량기 크롭의 `/meter/scan` `234.918㎥` 결과를 확인한다.
 
