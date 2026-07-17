@@ -3,16 +3,22 @@
 # scan: pipeline.run()을 monkeypatch로 대체 — YOLO 모델 없이 결과만 검증
 # manual: 실제 calc() 호출 (계산 모듈 테스트 겸용)
 
+import asyncio
 import io
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
+import pytest
 import src.api.db as _db
+from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select
 
 from src.api.models import Reading
+from src.api.routers.meter import post_scan
 
 
 HEADERS_A = {"X-Device-ID": "device-A"}
@@ -61,6 +67,56 @@ def test_scan_failure(client, monkeypatch):
     assert data["success"] is False
     assert data["reading_m3"] is None
     assert data["confidence"] is None
+
+
+def test_scan_inference_does_not_block_event_loop(monkeypatch):
+    """느린 YOLOX 추론 중에도 이벤트 루프가 다른 요청을 처리할 수 있어야 한다."""
+    monkeypatch.setattr("src.model.pipeline.run", lambda path: (time.sleep(0.2), [])[1])
+
+    async def exercise():
+        upload = UploadFile(filename="meter.jpg", file=io.BytesIO(b"fake-image"))
+        started_at = time.perf_counter()
+        scan_task = asyncio.create_task(post_scan(upload))
+        await asyncio.sleep(0.02)
+        responsive_after = time.perf_counter() - started_at
+        await scan_task
+        return responsive_after
+
+    assert asyncio.run(exercise()) < 0.1
+
+
+def test_scan_rejects_concurrent_inference(monkeypatch):
+    """이미 추론 중이면 두 번째 요청은 모델을 다시 실행하지 않고 즉시 거절한다."""
+    started = threading.Event()
+    release = threading.Event()
+    calls = 0
+
+    def slow_run(path):
+        nonlocal calls
+        calls += 1
+        started.set()
+        release.wait(timeout=1)
+        return []
+
+    monkeypatch.setattr("src.model.pipeline.run", slow_run)
+
+    async def exercise():
+        first = UploadFile(filename="first.jpg", file=io.BytesIO(b"first"))
+        second = UploadFile(filename="second.jpg", file=io.BytesIO(b"second"))
+        first_task = asyncio.create_task(post_scan(first))
+        await asyncio.to_thread(started.wait, 1)
+        rejected_at = time.perf_counter()
+        try:
+            with pytest.raises(HTTPException) as caught:
+                await post_scan(second)
+            assert caught.value.status_code == 503
+            assert time.perf_counter() - rejected_at < 0.1
+        finally:
+            release.set()
+            await first_task
+
+    asyncio.run(exercise())
+    assert calls == 1
 
 
 # ────────────────────────────────────────────────────────────────────────────

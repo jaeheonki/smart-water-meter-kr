@@ -9,12 +9,14 @@
 
 import os
 import tempfile
+import threading
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, select
+from starlette.concurrency import run_in_threadpool
 
 from src.api.db import get_session
 from src.api.models import Reading, Settings
@@ -31,6 +33,7 @@ from src.model import pipeline
 
 router = APIRouter()
 SEOUL = timezone(timedelta(hours=9))
+_scan_lock = threading.Lock()
 
 
 def _seoul_day_bounds(now: Optional[datetime] = None) -> tuple[datetime, datetime]:
@@ -70,18 +73,23 @@ async def post_scan(image: UploadFile = File(...)):
 
     앱은 이 결과를 사용자에게 보여준 뒤 확정 시 /meter/manual을 호출한다.
     """
-    # pipeline.run()은 파일 경로를 받으므로 업로드 이미지를 임시 파일에 저장
-    suffix = Path(image.filename or "meter.jpg").suffix or ".jpg"
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await image.read())
-        tmp_path = tmp.name
-
+    if not _scan_lock.acquire(blocking=False):
+        raise HTTPException(status_code=503, detail="사진 인식이 진행 중입니다. 잠시 후 다시 시도해주세요.")
     try:
-        results = pipeline.run(tmp_path)
-    except Exception:
-        return ScanResponse(success=False)
+        # pipeline.run()은 파일 경로를 받으므로 업로드 이미지를 임시 파일에 저장
+        suffix = Path(image.filename or "meter.jpg").suffix or ".jpg"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(await image.read())
+            tmp_path = tmp.name
+
+        try:
+            results = await run_in_threadpool(pipeline.run, tmp_path)
+        except Exception:
+            return ScanResponse(success=False)
+        finally:
+            os.unlink(tmp_path)
     finally:
-        os.unlink(tmp_path)
+        _scan_lock.release()
 
     if not results:
         return ScanResponse(success=False)
