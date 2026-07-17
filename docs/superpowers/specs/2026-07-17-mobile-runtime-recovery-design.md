@@ -63,4 +63,3 @@ Material Symbols Rounded의 필요한 웹폰트 파일을 `frontend/public/fonts
 - 로컬 아이콘 폰트와 외부 Material Symbols 제거를 검증한다.
 - 첫 검침·빈 이력 안내 문구를 검증한다.
 - 전체 pytest, Node 테스트, Vite 프로덕션 빌드, Capacitor sync와 Gradle Debug APK 빌드를 실행한다.
-
