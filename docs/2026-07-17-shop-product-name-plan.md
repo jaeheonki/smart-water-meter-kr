@@ -65,7 +65,7 @@ Run: `npm run build`
 
 Expected: Vite 프로덕션 빌드가 종료 코드 0으로 통과한다.
 
-- [ ] **Step 5: 상품명 변경을 커밋한다**
+- [x] **Step 5: 상품명 변경을 커밋한다**
 
 ```bash
 git add frontend/src/components/ShopScreen.jsx frontend/tests/pre-capacitor-integration.test.mjs
