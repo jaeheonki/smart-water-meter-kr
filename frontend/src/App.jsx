@@ -31,7 +31,7 @@ const REGION_TARIFF = { '서울': 1.0, '부산': 1.3, '대구': 1.2, '인천': 1
 function loadState() {
   try {
     const state = { ...DEFAULT_STATE, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) }
-    return state.screen === 'camera' ? { ...state, screen: 'home', camStart: null } : state
+    return { ...state, screen: 'home', camStart: null }
   }
   catch { return { ...DEFAULT_STATE } }
 }

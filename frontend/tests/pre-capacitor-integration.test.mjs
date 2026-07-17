@@ -21,20 +21,22 @@ const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.me
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
 
-test('앱 재실행은 저장된 카메라 화면 대신 홈에서 시작한다', () => {
+test('앱 재실행은 저장된 이전 탭과 관계없이 홈에서 시작한다', () => {
   const source = app.match(/function loadState\(\) \{[\s\S]*?\n\}/)?.[0]
   assert.ok(source)
 
-  const loadState = new Function(
-    'DEFAULT_STATE', 'localStorage', 'STORE_KEY',
-    `${source}; return loadState`,
-  )(
-    { screen: 'home' },
-    { getItem: () => JSON.stringify({ screen: 'camera', camStart: 'view', coins: 3 }) },
-    'banguli_app_v1',
-  )
+  for (const screen of ['camera', 'ledger', 'report', 'shop', 'settings']) {
+    const loadState = new Function(
+      'DEFAULT_STATE', 'localStorage', 'STORE_KEY',
+      `${source}; return loadState`,
+    )(
+      { screen: 'home' },
+      { getItem: () => JSON.stringify({ screen, camStart: 'view', coins: 3 }) },
+      'banguli_app_v1',
+    )
 
-  assert.deepEqual(loadState(), { screen: 'home', camStart: null, coins: 3 })
+    assert.deepEqual(loadState(), { screen: 'home', camStart: null, coins: 3 })
+  }
 })
 
 const expectedRegions = {
