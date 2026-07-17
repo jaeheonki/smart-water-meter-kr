@@ -12,8 +12,8 @@
 | 빌드 유형 | Debug |
 | 최소 Android SDK | 24 |
 | 대상 Android SDK | 36 |
-| 파일 크기 | 85,420,968 bytes |
-| SHA-256 | `4D9106E7DCE15782CCD139949917C53044B033C57AD958BDA14B5BCC0261A2E8` |
+| 파일 크기 | 90,763,539 bytes |
+| SHA-256 | `94EAEC15B368009D9EC1C766F995713F4B5A60880788FBD1B6EFDE03F3556DC8` |
 | 생성 시각 | 2026-07-17 KST |
 
 이 파일은 현재 작업 공간에서 팀 테스트용으로 복사한 전달물이다.
@@ -59,6 +59,9 @@ Gradle 원본은 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`에
 - 에뮬레이터 신규 상태에서 코인 0 확인.
 - 에뮬레이터에서 온보딩, 서울 지역 운영 API 저장과 홈 진입 확인.
 - 앱 WebView에서 운영 HTTP API 연결 확인.
+- 선택한 사진의 인식 중 미리보기, 12초 제한과 같은 사진 재시도 UI 포함.
+- 신규 저장 409 발생 시 당일 기록 재조회 후 수정 저장 복구 포함.
+- Material Symbols 아이콘 폰트를 APK 내부 자산으로 포함.
 
 ## 남은 실기기 확인
 
