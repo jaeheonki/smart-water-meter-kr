@@ -107,30 +107,36 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[촬영 버튼] --> B[camera.js getPhoto]
+    A[카메라·사진 버튼] --> B[camera.js getPhoto]
     B --> C{실행 환경}
-    C -->|Android| D[Capacitor Camera]
-    C -->|웹| E[파일 선택]
+    C -->|Android 카메라| D[CameraSource.Camera]
+    C -->|Android 사진| P[CameraSource.Photos]
+    C -->|웹| W[파일 선택]
     D --> F[File]
-    E --> F
+    P --> F
+    W --> F
     F --> G[POST /meter/scan]
     G --> H{인식 성공}
     H -->|성공| I[인식값 확인·수정]
     H -->|실패| J[수동 입력]
-    I --> K[POST /meter/manual]
+    I --> K{오늘 기록이 있는가}
     J --> K
-    K --> L[사용량·요금·환경 영향]
+    K -->|없음| L[POST /meter/manual]
+    K -->|있음| M[PUT /meter/today]
+    L --> N[사용량·요금·환경 영향]
+    M --> N
 ```
 
-1. `CameraFlow`가 `getPhoto()`를 호출한다.
-2. Android는 Camera 플러그인의 URI를 Blob과 File로 바꾸고, 웹은 파일 선택 결과를 그대로 File로 반환한다.
+1. `CameraFlow`가 촬영은 `getPhoto('camera')`, 사진 선택은 `getPhoto('photos')`로 호출한다.
+2. Android는 각 입력을 `CameraSource.Camera`와 `CameraSource.Photos`로 구분하고 URI를 Blob과 File로 바꾼다. 웹은 파일 선택 결과를 그대로 File로 반환한다.
 3. `scanMeter(file)`가 `image` 필드의 multipart 요청을 보낸다. `/meter/scan`은 인식만 수행하며 저장하지 않는다.
 4. 성공하면 검출값과 신뢰도를 보여주고 사용자가 값을 수정·확정할 수 있다. `success: false`면 오류 페이지 대신 수동 입력으로 이동한다.
-5. 자동 확정과 수동 입력 모두 `saveReading()`을 거쳐 `/meter/manual`에 저장한다. 자동은 `input_mode: "auto"`와 신뢰도를, 수동은 `input_mode: "manual"`을 보낸다.
+5. 앱 시작 시 `GET /meter/today`로 오늘 기록을 확인한다. 오늘 첫 확정은 `saveReading()`의 `POST /meter/manual`, 재확정은 `updateTodayReading()`의 `PUT /meter/today`로 같은 행을 수정한다.
 6. 첫 검침은 기준값으로만 저장된다. 두 번째부터 서버 응답의 사용량, 요금과 환경 영향을 결과 화면에 표시한다.
 7. 저장 성공 시 `recorded_at`을 로컬 날짜로 바꿔 `lastReadingDate`에 저장하고 오늘 알림이 예약되지 않도록 갱신한다.
+8. 오늘 기록이 있으면 홈에 `오늘 기록 수정` 버튼을 표시하며 사진 재인식과 직접 입력을 모두 허용한다. 수정은 코인과 연속 기록을 중복으로 늘리지 않는다.
 
-파일 선택 취소는 서버 오류로 표시하지 않고 촬영 화면으로 돌아간다. 네트워크·서버 오류만 재시도 안내를 표시한다.
+파일 선택과 카메라 취소는 서버 오류로 표시하지 않고 촬영 화면으로 돌아간다. 사진 준비 오류와 네트워크·서버 오류는 서로 다른 안내를 표시한다.
 
 ### 5.3 감소 검침과 계량기 교체
 

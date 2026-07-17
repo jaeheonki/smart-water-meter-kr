@@ -20,7 +20,7 @@ flowchart LR
     H --> I["검침 저장·리포트 계산"]
 ```
 
-프론트엔드와 Android 앱은 모델을 직접 실행하지 않는다. 촬영한 이미지를 FastAPI의 `POST /meter/scan`으로 보내고, 서버가 YOLOX 추론 결과를 반환한다. 사용자가 결과를 확인하거나 수정한 뒤 `POST /meter/manual`로 확정값을 저장한다.
+프론트엔드와 Android 앱은 모델을 직접 실행하지 않는다. 촬영한 이미지를 FastAPI의 `POST /meter/scan`으로 보내고, 서버가 YOLOX 추론 결과를 반환한다. 사용자가 결과를 확인하거나 수정한 뒤 오늘 첫 기록은 `POST /meter/manual`, 오늘 기록 재수정은 `PUT /meter/today`로 확정값을 저장한다.
 
 ## 데이터 준비
 
