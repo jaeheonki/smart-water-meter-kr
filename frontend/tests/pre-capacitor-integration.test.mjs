@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
+import { requestWithTimeout } from '../src/requestTimeout.js'
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
@@ -78,7 +79,7 @@ test('기기 데이터 삭제 API는 204 응답을 JSON으로 읽지 않는다',
     'BASE',
     'getDeviceId',
     'ApiError',
-    'fetch',
+    'requestWithTimeout',
     `return (${requestSource})`,
   )
   let parsedJson = false
@@ -86,11 +87,11 @@ test('기기 데이터 삭제 API는 204 응답을 JSON으로 읽지 않는다',
     'http://example.test',
     () => 'test-device',
     Error,
-    async () => ({
-      ok: true,
-      status: 204,
-      json: async () => { parsedJson = true; throw new Error('204 body must not be parsed') },
-    }),
+    (url, options, timeoutMs) => requestWithTimeout(url, options, timeoutMs, async () => ({
+        ok: true,
+        status: 204,
+        json: async () => { parsedJson = true; throw new Error('204 body must not be parsed') },
+      })),
   )
 
   assert.equal(await request('/device-data', { method: 'DELETE' }), null)

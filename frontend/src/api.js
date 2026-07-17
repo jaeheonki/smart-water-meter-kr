@@ -1,4 +1,6 @@
 // 백엔드 API 클라이언트 — 모든 서버 통신은 이 모듈을 거친다 (화면에서 fetch 직접 호출 금지)
+import { requestWithTimeout } from './requestTimeout.js'
+
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
 export class ApiError extends Error {
@@ -20,8 +22,9 @@ export function getDeviceId() {
 }
 
 async function request(path, options = {}) {
-  const headers = { "X-Device-ID": getDeviceId(), ...options.headers };
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+  const { timeoutMs = 0, ...fetchOptions } = options;
+  const headers = { "X-Device-ID": getDeviceId(), ...fetchOptions.headers };
+  const res = await requestWithTimeout(`${BASE}${path}`, { ...fetchOptions, headers }, timeoutMs);
   if (!res.ok) throw new ApiError(res.status, await res.text());
   if (res.status === 204) return null;
   return res.json();
@@ -31,7 +34,7 @@ async function request(path, options = {}) {
 export async function scanMeter(file) {
   const form = new FormData();
   form.append("image", file); // 백엔드 파라미터명 image 고정
-  return request("/meter/scan", { method: "POST", body: form });
+  return request("/meter/scan", { method: "POST", body: form, timeoutMs: 12000 });
 }
 
 // 검침값 확정 저장 + 요금 계산. 현재값 ≤ 이전값이면 422 (ApiError.status === 422)
