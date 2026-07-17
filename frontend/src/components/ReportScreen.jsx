@@ -98,7 +98,7 @@ function ReportScreen({ usage, recorded, goal }) {
               <div>리포트를 불러오지 못했습니다.</div>
               <button type="button" onClick={() => setReloadKey((key) => key + 1)} style={{ marginTop: 10 }}>다시 시도</button>
             </>
-          ) : '표시할 검침 이력이 없습니다.'}
+          ) : '이전 검침값이 없어 아직 리포트를 만들 수 없습니다. 다음 검침을 등록하면 목표 달성과 에너지 리포트가 표시됩니다.'}
         </Card>
       </div>
     );

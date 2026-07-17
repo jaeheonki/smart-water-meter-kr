@@ -48,7 +48,7 @@ function LedgerScreen({ goal, onNav, unit }) {
     </Card>
   ) : history.length === 0 ? (
     <Card>
-      <div style={{ textAlign: 'center', color: BGC.sub }}>검침 기록이 2개 이상 쌓이면 사용량이 표시됩니다</div>
+      <div style={{ textAlign: 'center', color: BGC.sub }}>이전 검침값이 없어 아직 사용량을 계산할 수 없습니다. 다음 검침을 등록하면 사용량이 표시됩니다.</div>
       <PrimaryBtn icon="photo_camera" onClick={() => onNav('camera')} style={{ marginTop: 12 }}>기록</PrimaryBtn>
     </Card>
   ) : null

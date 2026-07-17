@@ -520,7 +520,7 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
         <Card style={{ textAlign: 'center' }}>
           <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
           <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>첫 검침값을 저장했어요!</div>
-          <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 사용량과 요금을 계산해 드릴게요.</div>
+          <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 사용량·목표 달성·요금·에너지 리포트를 확인할 수 있어요.</div>
           <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
         <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: true, usage: 0, reward: 0, updated: saveResult.updated })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>

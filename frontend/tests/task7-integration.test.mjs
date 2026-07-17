@@ -12,7 +12,7 @@ test('이력 화면은 목데이터 대신 이력 API와 화면 내부 상태를
   assert.match(ledger, /const week = entries\.slice\(0, 7\)/)
   assert.match(ledger, /\{week\.map\(/)
   assert.doesNotMatch(ledger, /BG\.HISTORY/)
-  assert.match(ledger, /검침 기록이 2개 이상 쌓이면 사용량이 표시됩니다/)
+  assert.match(ledger, /이전 검침값이 없어 아직 사용량을 계산할 수 없습니다/)
   assert.match(ledger, /불러오는 중/)
   assert.match(ledger, /다시 시도/)
   assert.doesNotMatch(ledger, /fetch\s*\(/)
@@ -27,7 +27,7 @@ test('이력 화면은 같은 날짜 구간에도 고유한 React key를 사용�
 
 test('이력 빈 상태는 안내와 카메라 진입 CTA를 함께 제공한다', () => {
   assert.match(ledger, /function LedgerScreen\(\{ goal, onNav, unit \}\)/)
-  assert.match(ledger, /검침 기록이 2개 이상 쌓이면 사용량이 표시됩니다[\s\S]*onClick=\{\(\) => onNav\('camera'\)\}[\s\S]*>기록<\/PrimaryBtn>/)
+  assert.match(ledger, /이전 검침값이 없어 아직 사용량을 계산할 수 없습니다[\s\S]*onClick=\{\(\) => onNav\('camera'\)\}[\s\S]*>기록<\/PrimaryBtn>/)
 })
 
 test('설정 화면은 지역 API와 명시적 한글 매핑을 사용한다', () => {

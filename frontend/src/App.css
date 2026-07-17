@@ -1,4 +1,12 @@
 /* 기기 프레임 없이 전체 화면을 채우는 방울이 앱 스타일 */
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  src: url('/fonts/MaterialSymbolsRounded.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+}
+
   html, body { margin: 0; height: 100%; }
   body {
     font-family: system-ui, sans-serif;

@@ -264,10 +264,13 @@ test('글자 크기 크게는 1.15 배율을 저장한다', () => {
   assert.match(settings, /v === ['"]크게['"] \? 1\.15 : 1/)
 })
 
-test('Material Symbols와 한글 글꼴을 로드하고 아이콘 리가를 그대로 표시한다', () => {
+test('Material Symbols는 앱에 포함하고 한글 글꼴만 외부에서 로드한다', () => {
   assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.googleapis\.com["']\s*\/?>/)
   assert.match(index, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/fonts\.gstatic\.com["']\s+crossorigin\s*\/?>/)
-  assert.match(index, /<link\s+href=["']https:\/\/fonts\.googleapis\.com\/css2\?[^"']*family=Jua[^"']*family=Material\+Symbols\+Rounded[^"']*family=Noto\+Sans\+KR[^"']*display=swap["']\s+rel=["']stylesheet["']\s*\/?>/)
+  assert.match(index, /<link\s+href=["']https:\/\/fonts\.googleapis\.com\/css2\?[^"']*family=Jua[^"']*family=Noto\+Sans\+KR[^"']*display=swap["']\s+rel=["']stylesheet["']\s*\/?>/)
+  assert.doesNotMatch(index, /family=Material\+Symbols\+Rounded/)
+  assert.equal(existsSync(new URL('../public/fonts/MaterialSymbolsRounded.woff2', import.meta.url)), true)
+  assert.match(styles, /@font-face\s*\{[\s\S]*font-family:\s*['"]Material Symbols Rounded['"][\s\S]*src:\s*url\(['"]?\/fonts\/MaterialSymbolsRounded\.woff2['"]?\) format\(['"]woff2['"]\)/)
 
   const iconRule = styles.match(/\.msym\s*\{([^}]*)\}/)?.[1] ?? ''
   assert.match(iconRule, /font-family:\s*['"]Material Symbols Rounded['"]\s*;/)
@@ -332,7 +335,13 @@ test('리포트는 로딩, 오류 재시도, 빈 이력 상태를 제공한다',
   assert.match(report, /리포트를 불러오는 중이에요/)
   assert.match(report, /리포트를 불러오지 못했습니다/)
   assert.match(report, /다시 시도/)
-  assert.match(report, /표시할 검침 이력이 없습니다/)
+  assert.match(report, /이전 검침값이 없어 아직 리포트를 만들 수 없습니다/)
+  assert.match(report, /다음 검침을 등록하면 목표 달성과 에너지 리포트가 표시됩니다/)
+})
+
+test('첫 검침과 빈 가계부는 다음 검침에서 제공될 결과를 안내한다', () => {
+  assert.match(cameraFlow, /다음 검침부터 사용량·목표 달성·요금·에너지 리포트를 확인할 수 있어요/)
+  assert.match(readFileSync(new URL('../src/components/LedgerScreen.jsx', import.meta.url), 'utf8'), /이전 검침값이 없어 아직 사용량을 계산할 수 없습니다/)
 })
 
 test('리포트는 기본 기간과 날짜 지정의 이번·이전 범위를 표시용으로 제공한다', async () => {
