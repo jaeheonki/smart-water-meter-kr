@@ -155,7 +155,7 @@ Expected: 미리보기 수명 주기 연결이 없어 실패한다.
 - 웹 촬영은 기존 `getPhoto('camera')` 폴백을 유지한다.
 - 네이티브 뷰파인더에서는 예시 `MeterFace`를 숨기고 실제 영상 위 정렬 테두리만 표시한다.
 
-- [ ] **Step 4: 전체 자동 검증과 APK 빌드를 실행한다**
+- [x] **Step 4: 전체 자동 검증과 APK 빌드를 실행한다**
 
 Run: `node --test frontend/tests/camera-preview.test.mjs frontend/tests/notifications.test.mjs frontend/tests/pre-capacitor-integration.test.mjs frontend/tests/task7-integration.test.mjs`
 
@@ -173,7 +173,7 @@ Run: `./gradlew.bat assembleDebug`
 
 Expected: Debug APK 빌드가 통과한다.
 
-- [ ] **Step 5: 변경을 의미 단위로 커밋한다**
+- [x] **Step 5: 변경을 의미 단위로 커밋한다**
 
 ```bash
 git add frontend/package.json frontend/package-lock.json frontend/android/app/src/main/AndroidManifest.xml
@@ -194,7 +194,7 @@ git commit -m "feat: 앱 내 계량기 촬영과 플래시 제어 추가"
 **Interfaces:**
 - Produces: 실기기 확인용 최신 Debug APK.
 
-- [ ] **Step 1: 새 APK를 전달 경로에 복사하고 해시를 기록한다**
+- [x] **Step 1: 새 APK를 전달 경로에 복사하고 해시를 기록한다**
 
 원본 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`를 `output/android/banguli-debug.apk`로 복사하고 두 파일의 SHA-256 일치를 확인한다.
 
