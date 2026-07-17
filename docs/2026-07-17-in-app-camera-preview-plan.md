@@ -28,13 +28,13 @@
 **Interfaces:**
 - Produces: `@capacitor-community/camera-preview` 8.0.1과 Android `CAMERA` 권한.
 
-- [ ] **Step 1: Capacitor 8 호환 플러그인을 설치한다**
+- [x] **Step 1: Capacitor 8 호환 플러그인을 설치한다**
 
 Run: `npm install @capacitor-community/camera-preview@8.0.1`
 
 Expected: package와 lock 파일에 8.0.1 의존성이 추가된다.
 
-- [ ] **Step 2: Android 카메라 권한 계약 테스트를 작성하고 RED를 확인한다**
+- [x] **Step 2: Android 카메라 권한 계약 테스트를 작성하고 RED를 확인한다**
 
 ```javascript
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
@@ -49,7 +49,7 @@ Run: `node --test frontend/tests/pre-capacitor-integration.test.mjs`
 
 Expected: `CAMERA` 권한 누락으로 실패한다.
 
-- [ ] **Step 3: AndroidManifest에 CAMERA 권한을 추가하고 GREEN을 확인한다**
+- [x] **Step 3: AndroidManifest에 CAMERA 권한을 추가하고 GREEN을 확인한다**
 
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
@@ -74,7 +74,7 @@ Expected: 권한 계약 테스트가 통과한다.
 - `toggleFlash()` returns `{ flashOn: boolean }`.
 - `capture()` returns a JPEG `File` named `meter.jpg`.
 
-- [ ] **Step 1: 가짜 플러그인으로 컨트롤러 계약 RED 테스트를 작성한다**
+- [x] **Step 1: 가짜 플러그인으로 컨트롤러 계약 RED 테스트를 작성한다**
 
 ```javascript
 test('네이티브 미리보기는 후면 카메라를 시작하고 촬영과 torch를 제어한 뒤 정리한다', async () => {
@@ -101,11 +101,11 @@ Run: `node --test frontend/tests/camera-preview.test.mjs`
 
 Expected: 컨트롤러 export가 없어 실패한다.
 
-- [ ] **Step 2: 최소 컨트롤러를 구현한다**
+- [x] **Step 2: 최소 컨트롤러를 구현한다**
 
 컨트롤러는 `CameraPreview.start({ parent, position: 'rear', toBack: true, disableAudio: true })`, `capture({ quality: 90 })`, `getSupportedFlashModes()`, `setFlashMode({ flashMode: 'torch' | 'off' })`, `stop()`을 호출한다. Base64 촬영값은 JPEG `File`로 변환한다.
 
-- [ ] **Step 3: 컨트롤러 테스트를 GREEN으로 전환한다**
+- [x] **Step 3: 컨트롤러 테스트를 GREEN으로 전환한다**
 
 Run: `node --test frontend/tests/camera-preview.test.mjs`
 
@@ -124,7 +124,7 @@ Expected: 네이티브 시작·촬영·플래시·정리와 비네이티브 no-o
 - Consumes: Task 2의 `cameraPreviewController`.
 - Preserves: `getPhoto('photos')`, `scanMeter(file)`, 직접 입력과 취소 흐름.
 
-- [ ] **Step 1: 화면 수명 주기와 플래시 UI 계약 RED 테스트를 작성한다**
+- [x] **Step 1: 화면 수명 주기와 플래시 UI 계약 RED 테스트를 작성한다**
 
 테스트는 다음 계약을 검증한다.
 
@@ -141,14 +141,14 @@ Run: `node --test frontend/tests/pre-capacitor-integration.test.mjs`
 
 Expected: 미리보기 수명 주기 연결이 없어 실패한다.
 
-- [ ] **Step 2: 촬영 화면 진입과 종료 수명 주기를 연결한다**
+- [x] **Step 2: 촬영 화면 진입과 종료 수명 주기를 연결한다**
 
 - `step === 'view'`인 네이티브 환경에서 미리보기를 시작한다.
 - 촬영, 직접 입력, 갤러리, 닫기와 컴포넌트 해제 시 미리보기를 정지한다.
 - 미리보기 활성 중에만 `body.camera-preview-active`를 적용한다.
 - 시작 실패는 화면 오류로 표시하되 갤러리와 직접 입력을 유지한다.
 
-- [ ] **Step 3: 촬영과 플래시 버튼을 컨트롤러에 연결한다**
+- [x] **Step 3: 촬영과 플래시 버튼을 컨트롤러에 연결한다**
 
 - 네이티브 촬영은 `cameraPreviewController.capture()` 결과를 기존 `scanMeter()`에 전달한다.
 - 플래시 버튼은 지원 기기에서만 활성화하고 `off`와 `torch`를 토글한다.

@@ -35,6 +35,17 @@ test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그�
   assert.equal(packageJson.dependencies['@capacitor-community/camera-preview'], '^8.0.1')
 })
 
+test('촬영 화면은 네이티브 미리보기의 시작·촬영·플래시·종료 흐름을 연결한다', () => {
+  assert.match(cameraFlow, /cameraPreviewController\.start\(['"]meter-camera-preview['"]\)/)
+  assert.match(cameraFlow, /cameraPreviewController\.capture\(\)/)
+  assert.match(cameraFlow, /cameraPreviewController\.toggleFlash\(\)/)
+  assert.match(cameraFlow, /cameraPreviewController\.stop\(\)/)
+  assert.match(cameraFlow, /id=["']meter-camera-preview["']/)
+  assert.match(cameraFlow, /classList\.add\(['"]camera-preview-active['"]\)/)
+  assert.match(cameraFlow, /classList\.remove\(['"]camera-preview-active['"]\)/)
+  assert.match(styles, /body\.camera-preview-active[\s\S]*background:\s*transparent/)
+})
+
 test('상점 상품명은 오탈자와 낯선 표현을 교정한다', () => {
   for (const name of ['튤립 화분', '하트 쿠션', '원목 서랍장', '별빛 의자', '리본 가랜드', '민트 스툴']) {
     assert.match(shop, new RegExp(`name: ['"]${name}['"]`))
@@ -404,11 +415,11 @@ test('날짜 지정 이력은 현재와 직전 기간 총량을 리터로 합산
 test('파일 선택 취소는 서버 연결 오류로 표시하지 않고 촬영 화면으로 돌아간다', () => {
   const capture = cameraFlow.match(/const capture = async \(source\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
   const cancelBranch = capture.match(/if \(isPhotoCancelled\(caught\)\) \{([\s\S]*?)\}/)?.[1] ?? ''
-  const photoCatch = capture.match(/await getPhoto\(source\);[\s\S]*?\} catch \(caught\) \{([\s\S]*?)\n    \}\n\n    try \{/)?.[1] ?? ''
+  const photoCatch = capture.match(/\} catch \(caught\) \{([\s\S]*?)\n    \} finally \{/)?.[1] ?? ''
   const cancelConditionIndex = photoCatch.indexOf('if (isPhotoCancelled(caught))')
   const photoErrorIndex = photoCatch.indexOf("setError('사진을 불러오지 못했습니다. 다시 시도해주세요.')")
 
-  assert.match(capture, /try \{[\s\S]*await getPhoto\(source\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\}[\s\S]*try \{[\s\S]*await scanMeter\(file\)/)
+  assert.match(capture, /try \{[\s\S]*await getPhoto\(source\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\} finally \{[\s\S]*setCapturing\(false\)[\s\S]*\}[\s\S]*await scanMeter\(file\)/)
   assert.doesNotMatch(cancelBranch, /setError|scanMeter/)
   assert.match(cancelBranch, /return;/)
   assert.ok(cancelConditionIndex >= 0)
@@ -426,10 +437,10 @@ test('Android 카메라와 갤러리의 취소 메시지를 사용자 취소로 
   assert.equal(isPhotoCancelled(new Error('Permission denied')), false)
 })
 
-test('갤러리 아이콘은 사진 선택을 실행하고 촬영 버튼은 카메라를 실행한다', () => {
+test('갤러리는 사진 선택을 유지하고 촬영 버튼은 네이티브 미리보기와 웹 폴백을 사용한다', () => {
   assert.match(cameraFlow, /onClick=\{\(\) => capture\(['"]photos['"]\)\}[\s\S]*<MIcon name=["']image["']/)
-  assert.match(cameraFlow, /onClick=\{\(\) => capture\(['"]camera['"]\)\} aria-label=["']촬영["']/)
-  assert.match(cameraFlow, /const capture = async \(source\) => \{[\s\S]*await getPhoto\(source\)/)
+  assert.match(cameraFlow, /onClick=\{\(\) => capture\(['"]camera['"]\)\}[^>]*aria-label=["']촬영["']/)
+  assert.match(cameraFlow, /source === ['"]camera['"] && nativePreview[\s\S]*cameraPreviewController\.capture\(\)[\s\S]*else \{[\s\S]*getPhoto\(source\)/)
   assert.match(camera, /source === ['"]photos['"] \? CameraSource\.Photos : CameraSource\.Camera/)
 })
 

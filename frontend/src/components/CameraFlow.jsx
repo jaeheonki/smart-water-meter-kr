@@ -1,7 +1,7 @@
 // 계량기 촬영과 OCR 보정 및 수동 입력 흐름을 제공하는 화면
 import React, { useEffect, useState } from 'react'
 import BG from '../mockData.js'
-import { getPhoto, isPhotoCancelled } from '../camera.js'
+import { cameraPreviewController, getPhoto, isPhotoCancelled } from '../camera.js'
 import { scanMeter, saveReading, updateTodayReading, ApiError } from '../api.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
@@ -77,12 +77,44 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [baselinePrompt, setBaselinePrompt] = useState(null);
+  const [previewStarted, setPreviewStarted] = useState(false);
+  const [flashSupported, setFlashSupported] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const flaggedIdx = 4;
+  const nativePreview = cameraPreviewController.isAvailable();
 
   useEffect(() => {
     setDigits(initialReading.split('').map(Number));
     setBaselinePrompt(null);
   }, [scenario, initialReading]);
+
+  useEffect(() => {
+    if (step !== 'view' || !nativePreview) return undefined;
+
+    let active = true;
+    const startTimer = window.setTimeout(async () => {
+      try {
+        const result = await cameraPreviewController.start('meter-camera-preview');
+        if (!active) {
+          await cameraPreviewController.stop();
+          return;
+        }
+        setPreviewStarted(result.started);
+        setFlashSupported(result.flashSupported);
+        if (result.started) document.body.classList.add('camera-preview-active');
+      } catch {
+        if (active) setError('카메라를 시작하지 못했습니다. 권한을 확인하거나 사진을 선택해주세요.');
+      }
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(startTimer);
+      document.body.classList.remove('camera-preview-active');
+      void cameraPreviewController.stop();
+    };
+  }, [step, nativePreview]);
 
   const reading = parseInt(digits.join(''), 10);
   const readingM3 = reading / 1000;
@@ -96,10 +128,20 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
   const capture = async (source) => {
     setError('');
     setBaselinePrompt(null);
-    setStep('scan');
     let file;
     try {
-      file = await getPhoto(source);
+      if (source === 'camera' && nativePreview) {
+        setCapturing(true);
+        file = await cameraPreviewController.capture();
+        await cameraPreviewController.stop();
+        document.body.classList.remove('camera-preview-active');
+        setPreviewStarted(false);
+        setFlashSupported(false);
+        setFlashOn(false);
+      } else {
+        setStep('scan');
+        file = await getPhoto(source);
+      }
     } catch (caught) {
       setStep('view');
       if (isPhotoCancelled(caught)) {
@@ -107,8 +149,11 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
       }
       setError('사진을 불러오지 못했습니다. 다시 시도해주세요.');
       return;
+    } finally {
+      setCapturing(false);
     }
 
+    setStep('scan');
     try {
       const scan = await scanMeter(file);
       if (!scan.success) {
@@ -123,6 +168,17 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
     } catch {
       setError('서버에 연결할 수 없습니다. 다시 시도해주세요.');
       setStep('view');
+    }
+  };
+
+  const toggleFlash = async () => {
+    if (!previewStarted || !flashSupported || capturing) return;
+    setError('');
+    try {
+      const result = await cameraPreviewController.toggleFlash();
+      setFlashOn(result.flashOn);
+    } catch {
+      setError('플래시를 전환하지 못했습니다.');
     }
   };
 
@@ -217,13 +273,13 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
   };
 
   const darkTop = (title) => (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: nativePreview ? 'rgba(14,27,38,0.72)' : 'transparent' }}>
       <button className="press" onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
         <MIcon name="close" size={21} color="#fff"></MIcon>
       </button>
       <div className="jua" style={{ flex: 1, textAlign: 'center', fontSize: 17, color: '#fff' }}>{title}</div>
-      <button className="press" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-        <MIcon name="flash_on" size={20} color="#fff" fill={0}></MIcon>
+      <button className="press" onClick={toggleFlash} disabled={!previewStarted || !flashSupported || capturing} aria-label={flashOn ? '플래시 끄기' : '플래시 켜기'} style={{ background: flashOn ? '#F5C451' : 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 12, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: flashSupported ? 'pointer' : 'default', opacity: nativePreview && flashSupported ? 1 : 0.42 }}>
+        <MIcon name={flashOn ? 'flash_on' : 'flash_off'} size={20} color={flashOn ? '#44320A' : '#fff'} fill={flashOn ? 1 : 0}></MIcon>
       </button>
     </div>
   );
@@ -232,11 +288,11 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
   if (step === 'view' || step === 'scan') {
     const scanning = step === 'scan';
     return (
-        <div data-screen-label={scanning ? '촬영-인식중' : '촬영-뷰파인더'} style={{ flex: 1, minHeight: 0, height: '100%', background: '#0E1B26', display: 'flex', flexDirection: 'column' }}>
+        <div id="meter-camera-preview" data-screen-label={scanning ? '촬영-인식중' : '촬영-뷰파인더'} style={{ flex: 1, minHeight: 0, height: '100%', background: nativePreview && previewStarted && !scanning ? 'transparent' : '#0E1B26', display: 'flex', flexDirection: 'column' }}>
           {darkTop('계량기 촬영')}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-            <div style={{ position: 'relative', border: '2.5px dashed rgba(255,255,255,0.45)', borderRadius: 28, padding: 30, overflow: 'hidden' }}>
-              <MeterFace digits={sc.digits}></MeterFace>
+            <div style={{ position: 'relative', width: nativePreview ? 'min(78vw, 310px)' : 'auto', height: nativePreview ? 'min(52vh, 360px)' : 'auto', border: '2.5px dashed rgba(255,255,255,0.45)', borderRadius: 28, padding: nativePreview ? 0 : 30, overflow: 'hidden' }}>
+              {!nativePreview && <MeterFace digits={sc.digits}></MeterFace>}
               {scanning && <div className="scanline"></div>}
             </div>
             {scanning ? (
@@ -248,7 +304,7 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
               <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13.5, fontWeight: 600 }}>숫자판이 테두리 안에 들어오게 맞춰주세요</div>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '0 0 22px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '12px 0 22px', background: nativePreview ? 'rgba(14,27,38,0.72)' : 'transparent' }}>
             {!scanning && (
               <button className="press" onClick={() => { setError(''); setBaselinePrompt(null); setStep('manual'); }} style={{
                 background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 99,
@@ -264,8 +320,8 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
                 <button className="press" onClick={() => capture('photos')} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 16, width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <MIcon name="image" size={24} color="#fff" fill={0}></MIcon>
                 </button>
-                <button className="press" onClick={() => capture('camera')} aria-label="촬영" style={{
-                  width: 78, height: 78, borderRadius: '50%', cursor: 'pointer',
+                <button className="press" onClick={() => capture('camera')} disabled={capturing || (nativePreview && !previewStarted)} aria-label="촬영" style={{
+                  width: 78, height: 78, borderRadius: '50%', cursor: capturing ? 'default' : 'pointer', opacity: nativePreview && !previewStarted ? 0.55 : 1,
                   background: '#fff', border: '5px solid rgba(255,255,255,0.35)', backgroundClip: 'padding-box',
                 }}></button>
                 <div style={{ width: 50 }}></div>

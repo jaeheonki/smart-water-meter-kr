@@ -79,3 +79,11 @@ body { overflow: hidden; background: #f2faff; }
 .app-root { width: 100%; height: 100%; position: relative; background: #f2faff; }
 .app-shell { width: 100%; height: 100%; display: flex; flex-direction: column; background: #f2faff; }
 .app-content { flex: 1; min-height: 0; overflow-y: auto; }
+
+body.camera-preview-active,
+body.camera-preview-active #root,
+body.camera-preview-active .app-root,
+body.camera-preview-active .app-shell,
+body.camera-preview-active .app-content {
+  background: transparent;
+}
