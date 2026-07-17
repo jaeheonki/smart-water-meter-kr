@@ -15,6 +15,8 @@ const shop = readFileSync(new URL('../src/components/ShopScreen.jsx', import.met
 const api = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8')
 const replacementHistoryUrl = new URL('../src/components/ReplacementHistoryScreen.jsx', import.meta.url)
 const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(replacementHistoryUrl, 'utf8') : ''
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -26,6 +28,11 @@ test('신규 설치의 코인은 0에서 시작한다', () => {
   const defaultState = app.match(/const DEFAULT_STATE = \{[\s\S]*?\n\}/)?.[0]
   assert.ok(defaultState)
   assert.match(defaultState, /\bcoins:\s*0\b/)
+})
+
+test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그인을 등록한다', () => {
+  assert.match(androidManifest, /<uses-permission android:name="android.permission.CAMERA"\s*\/>/)
+  assert.equal(packageJson.dependencies['@capacitor-community/camera-preview'], '^8.0.1')
 })
 
 test('상점 상품명은 오탈자와 낯선 표현을 교정한다', () => {

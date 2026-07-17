@@ -82,7 +82,7 @@ test('네이티브 미리보기는 후면 카메라를 시작하고 촬영과 to
   const preview = {
     start: async (options) => calls.push(['start', options]),
     getSupportedFlashModes: async () => ({ result: ['off', 'torch'] }),
-    setFlashMode: async (mode) => calls.push(['flash', mode]),
+    setFlashMode: async (options) => calls.push(['flash', options]),
     capture: async () => ({ value: 'aGVsbG8=' }),
     stop: async () => calls.push(['stop']),
   }
@@ -92,7 +92,7 @@ test('네이티브 미리보기는 후면 카메라를 시작하고 촬영과 to
   assert.deepEqual(await controller.toggleFlash(), { flashOn: true })
   assert.equal((await controller.capture()).name, 'meter.jpg')
   await controller.stop()
-  assert.deepEqual(calls.at(-2), ['flash', 'off'])
+  assert.deepEqual(calls.at(-2), ['flash', { flashMode: 'off' }])
   assert.deepEqual(calls.at(-1), ['stop'])
 })
 ```
@@ -103,7 +103,7 @@ Expected: 컨트롤러 export가 없어 실패한다.
 
 - [ ] **Step 2: 최소 컨트롤러를 구현한다**
 
-컨트롤러는 `CameraPreview.start({ parent, position: 'rear', toBack: true, disableAudio: true })`, `capture({ quality: 90 })`, `getSupportedFlashModes()`, `setFlashMode('torch' | 'off')`, `stop()`을 호출한다. Base64 촬영값은 JPEG `File`로 변환한다.
+컨트롤러는 `CameraPreview.start({ parent, position: 'rear', toBack: true, disableAudio: true })`, `capture({ quality: 90 })`, `getSupportedFlashModes()`, `setFlashMode({ flashMode: 'torch' | 'off' })`, `stop()`을 호출한다. Base64 촬영값은 JPEG `File`로 변환한다.
 
 - [ ] **Step 3: 컨트롤러 테스트를 GREEN으로 전환한다**
 
