@@ -29,7 +29,10 @@ const DEFAULT_STATE = {
 const REGION_TARIFF = { '서울': 1.0, '부산': 1.3, '대구': 1.2, '인천': 1.0, '광주': 1.1, '대전': 1.0, '울산': 1.2, '세종': 1.0, '경기': 1.1, '강원': 1.2, '충북': 1.1, '충남': 1.1, '전주': 1.1, '여수': 1.1, '포항': 1.2, '창원': 1.2, '제주': 1.3 }
 
 function loadState() {
-  try { return { ...DEFAULT_STATE, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) } }
+  try {
+    const state = { ...DEFAULT_STATE, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) }
+    return state.screen === 'camera' ? { ...state, screen: 'home', camStart: null } : state
+  }
   catch { return { ...DEFAULT_STATE } }
 }
 

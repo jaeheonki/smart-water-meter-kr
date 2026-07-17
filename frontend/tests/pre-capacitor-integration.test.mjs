@@ -19,6 +19,23 @@ const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(repl
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
+
+test('앱 재실행은 저장된 카메라 화면 대신 홈에서 시작한다', () => {
+  const source = app.match(/function loadState\(\) \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(source)
+
+  const loadState = new Function(
+    'DEFAULT_STATE', 'localStorage', 'STORE_KEY',
+    `${source}; return loadState`,
+  )(
+    { screen: 'home' },
+    { getItem: () => JSON.stringify({ screen: 'camera', camStart: 'view', coins: 3 }) },
+    'banguli_app_v1',
+  )
+
+  assert.deepEqual(loadState(), { screen: 'home', camStart: null, coins: 3 })
+})
+
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',

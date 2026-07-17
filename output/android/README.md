@@ -13,7 +13,7 @@
 | 최소 Android SDK | 24 |
 | 대상 Android SDK | 36 |
 | 파일 크기 | 90,763,539 bytes |
-| SHA-256 | `94EAEC15B368009D9EC1C766F995713F4B5A60880788FBD1B6EFDE03F3556DC8` |
+| SHA-256 | `68298DEEF2F99B499ADF09ABFDA7B7648A0A4D55E937240F91007D41C63AACF2` |
 | 생성 시각 | 2026-07-17 KST |
 
 이 파일은 현재 작업 공간에서 팀 테스트용으로 복사한 전달물이다.
@@ -62,6 +62,7 @@ Gradle 원본은 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`에
 - 선택한 사진의 인식 중 미리보기, 12초 제한과 같은 사진 재시도 UI 포함.
 - 신규 저장 409 발생 시 당일 기록 재조회 후 수정 저장 복구 포함.
 - Material Symbols 아이콘 폰트를 APK 내부 자산으로 포함.
+- 에뮬레이터에서 카메라 화면 종료 후 런처 재실행 시 홈 화면 복귀 확인.
 
 ## 남은 실기기 확인
 
