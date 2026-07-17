@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # 의존성 파일을 소스보다 먼저 복사 → 코드 변경 시 패키지 레이어 캐시 재사용
 COPY pyproject.toml uv.lock ./
-RUN uv sync --no-dev && \
+RUN uv sync --no-dev --no-install-package onnxruntime-gpu && \
     uv pip install onnxruntime  # onnxruntime-gpu → CPU-only 교체 (t2.micro는 GPU 없음)
 
 # 소스 코드

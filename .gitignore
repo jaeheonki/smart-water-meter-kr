@@ -37,5 +37,8 @@ context-notes.md
 # 로컬 전달용 Android 바이너리
 output/android/*.apk
 
+# EC2 일회성 배포 번들
+output/deploy/*.bundle
+
 # 루트의 이전 로컬 SQLite 파일
 /data.db
