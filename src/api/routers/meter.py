@@ -9,8 +9,9 @@
 
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, select
@@ -18,11 +19,49 @@ from sqlmodel import Session, select
 from src.api.db import get_session
 from src.api.models import Reading, Settings
 from src.api.routers.settings import _get_device_id
-from src.api.schemas import ManualRequest, ManualResponse, ScanResponse, map_calc_result
+from src.api.schemas import (
+    ManualRequest,
+    ManualResponse,
+    ScanResponse,
+    TodayReadingResponse,
+    map_calc_result,
+)
 from src.calculation import calc
 from src.model import pipeline
 
 router = APIRouter()
+SEOUL = timezone(timedelta(hours=9))
+
+
+def _seoul_day_bounds(now: Optional[datetime] = None) -> tuple[datetime, datetime]:
+    """현재 한국 날짜의 시작과 끝을 SQLite용 UTC naive 시각으로 반환한다."""
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    local_date = current.astimezone(SEOUL).date()
+    start_local = datetime.combine(local_date, time.min, tzinfo=SEOUL)
+    end_local = start_local + timedelta(days=1)
+    return (
+        start_local.astimezone(timezone.utc).replace(tzinfo=None),
+        end_local.astimezone(timezone.utc).replace(tzinfo=None),
+    )
+
+
+def _get_today_reading(
+    session: Session,
+    device_id: str,
+    now: Optional[datetime] = None,
+) -> Optional[Reading]:
+    start, end = _seoul_day_bounds(now)
+    return session.exec(
+        select(Reading)
+        .where(
+            Reading.device_id == device_id,
+            Reading.recorded_at >= start,
+            Reading.recorded_at < end,
+        )
+        .order_by(Reading.recorded_at.desc())
+    ).first()
 
 
 @router.post("/meter/scan", response_model=ScanResponse)
@@ -69,7 +108,10 @@ def post_manual(
     """
     # 이전 검침 기록 조회 (현재 기기의 가장 최근)
     session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-    now = datetime.now(timezone.utc).replace(tzinfo=None)  # SQLite는 naive datetime 저장
+    now_aware = datetime.now(timezone.utc)
+    now = now_aware.replace(tzinfo=None)  # SQLite는 naive datetime 저장
+    if _get_today_reading(session, device_id, now_aware):
+        raise HTTPException(status_code=409, detail="오늘 검침 기록이 이미 있습니다.")
     prev = session.exec(
         select(Reading)
         .where(Reading.device_id == device_id)
@@ -122,5 +164,82 @@ def post_manual(
         reading_m3=body.reading_m3,
         recorded_at=now,
         first_reading=False,
+        **map_calc_result(result),
+    )
+
+
+@router.get("/meter/today", response_model=Optional[TodayReadingResponse])
+def get_today(
+    device_id: str = Depends(_get_device_id),
+    session: Session = Depends(get_session),
+):
+    """현재 기기의 한국 날짜 기준 오늘 검침을 반환한다."""
+    return _get_today_reading(session, device_id)
+
+
+@router.put("/meter/today", response_model=ManualResponse)
+def put_today(
+    body: ManualRequest,
+    device_id: str = Depends(_get_device_id),
+    session: Session = Depends(get_session),
+):
+    """한국 날짜 기준 오늘 검침 행을 새 행 추가 없이 수정한다."""
+    session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+    start, _ = _seoul_day_bounds()
+    today = _get_today_reading(session, device_id)
+    if not today:
+        raise HTTPException(status_code=404, detail="오늘 검침 기록이 없습니다.")
+
+    prev = session.exec(
+        select(Reading)
+        .where(Reading.device_id == device_id, Reading.recorded_at < start)
+        .order_by(Reading.recorded_at.desc())
+    ).first()
+    settings_row = session.get(Settings, device_id)
+    region = (settings_row.region if settings_row else None) or "seoul"
+
+    result = None
+    if prev and not body.reset_baseline:
+        if body.reading_m3 <= prev.reading_m3:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"이번달 검침값({body.reading_m3})이 이전달({prev.reading_m3})보다 작거나 같습니다. "
+                    "검침값을 확인하세요."
+                ),
+            )
+        try:
+            result = calc(region, prev.reading_m3, body.reading_m3)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+
+    today.reading_m3 = body.reading_m3
+    today.confidence = body.confidence
+    today.input_mode = body.input_mode
+    today.is_baseline = today.is_baseline or bool(prev and body.reset_baseline)
+    session.add(today)
+    session.commit()
+    session.refresh(today)
+
+    if not prev:
+        return ManualResponse(
+            reading_m3=today.reading_m3,
+            recorded_at=today.recorded_at,
+            first_reading=True,
+            updated=True,
+        )
+    if today.is_baseline:
+        return ManualResponse(
+            reading_m3=today.reading_m3,
+            recorded_at=today.recorded_at,
+            first_reading=False,
+            baseline_reset=True,
+            updated=True,
+        )
+    return ManualResponse(
+        reading_m3=today.reading_m3,
+        recorded_at=today.recorded_at,
+        first_reading=False,
+        updated=True,
         **map_calc_result(result),
     )

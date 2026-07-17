@@ -61,10 +61,21 @@ class ManualResponse(BaseModel):
     recorded_at: datetime                        # 저장 시각 (UTC)
     first_reading: bool                          # True이면 아래 필드 모두 null
     baseline_reset: bool = False                 # 계량기 교체 기준점으로 저장했는지 여부
+    updated: bool = False                        # 오늘 기록을 새 행 없이 수정했는지 여부
     usage_m3: Optional[float] = None             # 이번 달 사용량 (현재 - 이전)
     prev_reading_m3: Optional[float] = None      # 직전 검침값
     bill: Optional[BillSchema] = None            # 요금 세부 내역
     impact: Optional[ImpactSchema] = None        # 환경 영향
+
+
+class TodayReadingResponse(BaseModel):
+    """GET /meter/today 응답."""
+
+    reading_m3: float
+    confidence: Optional[float] = None
+    input_mode: str
+    recorded_at: datetime
+    is_baseline: bool = False
 
 
 class HistoryItem(BaseModel):
