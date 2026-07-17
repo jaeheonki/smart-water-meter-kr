@@ -137,7 +137,7 @@ function ClosetSheet({ owned, equipped, onEquip, onClose, onNav }) {
 }
 
 function HomeScreen({ app }) {
-  const { stage, recorded, usage, goal, coins, streak, tip, house, userName, dolphinName, onNav, onManual, wornImg, sprite, frames, faces, owned, equipped, onEquip, placedItems, decorPos, onMoveDecor, room } = app;
+  const { stage, recorded, usage, goal, coins, streak, tip, house, userName, dolphinName, onNav, onManual, onEditToday, wornImg, sprite, frames, faces, owned, equipped, onEquip, placedItems, decorPos, onMoveDecor, room } = app;
   const roomRef = useRef(null);
   const themeKey = room && room.theme ? room.theme : null;
   const theme = themeKey && ROOM_THEMES[themeKey] ? ROOM_THEMES[themeKey] : null;
@@ -242,6 +242,10 @@ function HomeScreen({ app }) {
           <span className="jua" style={{ fontSize: 14.5, color: BGC.skyDeep }}>옷 갈아입기</span>
         </button>
       </div>
+
+      {recorded && (
+        <PrimaryBtn icon="edit" onClick={onEditToday} style={{ marginTop: 12 }}>오늘 기록 수정</PrimaryBtn>
+      )}
 
       {/* 오늘 기록 — 물 가계부 제거됨 */}
       {false && (

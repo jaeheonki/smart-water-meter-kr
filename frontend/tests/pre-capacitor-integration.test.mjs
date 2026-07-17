@@ -9,6 +9,8 @@ const styles = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
+const camera = readFileSync(new URL('../src/camera.js', import.meta.url), 'utf8')
+const home = readFileSync(new URL('../src/components/HomeScreen.jsx', import.meta.url), 'utf8')
 const api = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8')
 const replacementHistoryUrl = new URL('../src/components/ReplacementHistoryScreen.jsx', import.meta.url)
 const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(replacementHistoryUrl, 'utf8') : ''
@@ -62,7 +64,7 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
   const serverDelete = new Promise((resolve) => { finishServerDelete = resolve })
   const createReset = new Function(
     'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
-    'setShowAttend', 'setSt', 'DEFAULT_STATE',
+    'setShowAttend', 'setSt', 'setTodayReading', 'setStreak', 'DEFAULT_STATE',
     `return (${resetSource})`,
   )
   const reset = createReset(
@@ -72,6 +74,8 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
     'banguli_app_v1',
     () => { events.push('attendance') },
     () => { events.push('state') },
+    () => { events.push('today') },
+    () => { events.push('streak') },
     { onboarded: false },
   )
 
@@ -81,7 +85,7 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
   finishServerDelete()
   await pending
   assert.deepEqual(events, [
-    'server', 'notifications', 'remove:banguli_app_v1', 'remove:device_id', 'attendance', 'state',
+    'server', 'notifications', 'remove:banguli_app_v1', 'remove:device_id', 'attendance', 'state', 'today', 'streak',
   ])
 })
 
@@ -90,7 +94,7 @@ test('전체 앱 초기화 실패는 로컬 상태를 보존해 다시 시도할
   assert.ok(resetSource)
   const createReset = new Function(
     'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
-    'setShowAttend', 'setSt', 'DEFAULT_STATE',
+    'setShowAttend', 'setSt', 'setTodayReading', 'setStreak', 'DEFAULT_STATE',
     `return (${resetSource})`,
   )
 
@@ -103,6 +107,8 @@ test('전체 앱 초기화 실패는 로컬 상태를 보존해 다시 시도할
       'banguli_app_v1',
       () => { localEffects.push('attendance') },
       () => { localEffects.push('state') },
+      () => { localEffects.push('today') },
+      () => { localEffects.push('streak') },
       { onboarded: false },
     )
 
@@ -179,10 +185,11 @@ test('알림 시각 재시도 성공은 실패 당시 시각으로 로컬 입력
 
 test('검침 저장 성공 직후 일반 저장과 baseline 저장 모두 recorded_at을 App에 전달한다', () => {
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKeyFromUtcTimestamp\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
-  assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, onClose, onReadingSaved, onDone \}\)/)
-  assert.equal(cameraFlow.match(/onReadingSaved\(result\.recorded_at\)/g)?.length, 2)
-  assert.match(cameraFlow, /const confirmReading[\s\S]*await saveReading\([\s\S]*onReadingSaved\(result\.recorded_at\)[\s\S]*setStep\(['"]done['"]\)/)
-  assert.match(cameraFlow, /const confirmBaseline[\s\S]*await saveReading\([\s\S]*onReadingSaved\(result\.recorded_at\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, todayReading, onClose, onReadingSaved, onDone \}\)/)
+  assert.equal(cameraFlow.match(/onReadingSaved\(result\)/g)?.length, 2)
+  assert.equal(cameraFlow.match(/const submitReading = todayReading \? updateTodayReading : saveReading/g)?.length, 2)
+  assert.match(cameraFlow, /const confirmReading[\s\S]*await submitReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.match(cameraFlow, /const confirmBaseline[\s\S]*await submitReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
   assert.match(app, /<CameraFlow[\s\S]*onReadingSaved=\{recordReading\}[\s\S]*onDone=\{completeReading\}/)
   const completeReading = app.match(/const completeReading = \([^\n]+\) => \{([\s\S]*?)\n  \}/)?.[1] ?? ''
   assert.doesNotMatch(completeReading, /localDateKey|lastReadingDate|notificationService/)
@@ -191,7 +198,7 @@ test('검침 저장 성공 직후 일반 저장과 baseline 저장 모두 record
 test('검침 완료와 교체 이력은 공용 UTC 시각 변환 helper를 사용한다', () => {
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKeyFromUtcTimestamp\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
   assert.doesNotMatch(app, /function localDateKeyFromRecordedAt/)
-  assert.match(app, /const lastReadingDate = localDateKeyFromUtcTimestamp\(recordedAt\)/)
+  assert.match(app, /const lastReadingDate = localDateKeyFromUtcTimestamp\(result\.recorded_at\)/)
   assert.match(replacementHistory, /import\s+\{\s*localDateKeyFromUtcTimestamp\s*\}\s+from\s+['"]\.\.\/notifications\.js['"]/)
   assert.match(replacementHistory, /localDateKeyFromUtcTimestamp\(item\.replaced_at\)/)
   assert.doesNotMatch(replacementHistory, /replaced_at\.slice\(0, 10\)/)
@@ -249,7 +256,7 @@ test('공유 지역 매핑은 알 수 없는 라벨을 API 코드로 만들지 �
 })
 
 test('최초 지역 선택은 API 코드로 저장에 성공한 뒤에만 모달을 닫는다', () => {
-  assert.match(app, /import\s+\{\s*saveSettings\s*\}\s+from\s+['"]\.\/api\.js['"]/)
+  assert.match(app, /import\s+\{[^}]*saveSettings[^}]*\}\s+from\s+['"]\.\/api\.js['"]/)
   assert.match(app, /import\s+\{\s*getRegionCode\s*\}\s+from\s+['"]\.\/regions\.js['"]/)
   assert.match(app, /const code = getRegionCode\(region\)/)
   assert.match(app, /if \(!code\) \{[\s\S]*setInitialRegionError\(true\)[\s\S]*return/)
@@ -378,23 +385,79 @@ test('날짜 지정 이력은 현재와 직전 기간 총량을 리터로 합산
 })
 
 test('파일 선택 취소는 서버 연결 오류로 표시하지 않고 촬영 화면으로 돌아간다', () => {
-  const capture = cameraFlow.match(/const capture = async \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
-  const cancelBranch = capture.match(/if \(caught instanceof Error && caught\.message === ['"]cancelled['"]\) \{([\s\S]*?)\}/)?.[1] ?? ''
-  const photoCatch = capture.match(/await getPhoto\(\);[\s\S]*?\} catch \(caught\) \{([\s\S]*?)\n    \}\n\n    try \{/)?.[1] ?? ''
-  const cancelConditionIndex = photoCatch.indexOf("if (caught instanceof Error && caught.message === 'cancelled')")
-  const serverErrorIndex = photoCatch.indexOf("setError('서버에 연결할 수 없습니다. 다시 시도해주세요.')")
+  const capture = cameraFlow.match(/const capture = async \(source\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
+  const cancelBranch = capture.match(/if \(isPhotoCancelled\(caught\)\) \{([\s\S]*?)\}/)?.[1] ?? ''
+  const photoCatch = capture.match(/await getPhoto\(source\);[\s\S]*?\} catch \(caught\) \{([\s\S]*?)\n    \}\n\n    try \{/)?.[1] ?? ''
+  const cancelConditionIndex = photoCatch.indexOf('if (isPhotoCancelled(caught))')
+  const photoErrorIndex = photoCatch.indexOf("setError('사진을 불러오지 못했습니다. 다시 시도해주세요.')")
 
-  assert.match(capture, /try \{[\s\S]*await getPhoto\(\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\}[\s\S]*try \{[\s\S]*await scanMeter\(file\)/)
+  assert.match(capture, /try \{[\s\S]*await getPhoto\(source\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\}[\s\S]*try \{[\s\S]*await scanMeter\(file\)/)
   assert.doesNotMatch(cancelBranch, /setError|scanMeter/)
   assert.match(cancelBranch, /return;/)
   assert.ok(cancelConditionIndex >= 0)
   assert.doesNotMatch(photoCatch.slice(0, cancelConditionIndex), /setError/)
   assert.match(photoCatch.slice(0, cancelConditionIndex), /setStep\(['"]view['"]\)/)
-  assert.ok(serverErrorIndex > cancelConditionIndex)
+  assert.ok(photoErrorIndex > cancelConditionIndex)
+})
+
+test('Android 카메라와 갤러리의 취소 메시지를 사용자 취소로 판별한다', async () => {
+  const { isPhotoCancelled } = await import('../src/camera.js')
+
+  assert.equal(isPhotoCancelled(new Error('cancelled')), true)
+  assert.equal(isPhotoCancelled(new Error('User cancelled photos app')), true)
+  assert.equal(isPhotoCancelled(new Error('User canceled photo capture')), true)
+  assert.equal(isPhotoCancelled(new Error('Permission denied')), false)
+})
+
+test('갤러리 아이콘은 사진 선택을 실행하고 촬영 버튼은 카메라를 실행한다', () => {
+  assert.match(cameraFlow, /onClick=\{\(\) => capture\(['"]photos['"]\)\}[\s\S]*<MIcon name=["']image["']/)
+  assert.match(cameraFlow, /onClick=\{\(\) => capture\(['"]camera['"]\)\} aria-label=["']촬영["']/)
+  assert.match(cameraFlow, /const capture = async \(source\) => \{[\s\S]*await getPhoto\(source\)/)
+  assert.match(camera, /source === ['"]photos['"] \? CameraSource\.Photos : CameraSource\.Camera/)
+})
+
+test('사진 준비 오류와 서버 전송 오류를 서로 다른 문구로 안내한다', () => {
+  assert.match(cameraFlow, /isPhotoCancelled\(caught\)/)
+  assert.match(cameraFlow, /사진을 불러오지 못했습니다\. 다시 시도해주세요\./)
+  assert.match(cameraFlow, /서버에 연결할 수 없습니다\. 다시 시도해주세요\./)
+})
+
+test('연속 기록은 목 데이터가 아니라 실제 검침 날짜의 연속성으로 계산한다', async () => {
+  const { calculateReadingStreak } = await import('../src/readingHistory.js')
+  const history = [
+    { start_label: '2026-07-14', end_label: '2026-07-15' },
+    { start_label: '2026-07-15', end_label: '2026-07-16' },
+  ]
+  const today = { recorded_at: '2026-07-17T00:00:00Z' }
+
+  assert.equal(calculateReadingStreak(history, today), 4)
+  assert.equal(calculateReadingStreak([{ start_label: '2026-07-14', end_label: '2026-07-16' }], today), 2)
+  assert.equal(calculateReadingStreak([], null), 0)
+})
+
+test('앱 시작 시 오늘 기록과 실제 이력을 조회하고 고정 13일 값을 사용하지 않는다', () => {
+  assert.match(api, /export async function getTodayReading\(\)/)
+  assert.match(api, /export async function updateTodayReading/)
+  assert.match(app, /Promise\.all\(\[getTodayReading\(\), getHistory\(\)\]\)/)
+  assert.match(app, /calculateReadingStreak\(history, todayReading\)/)
+  assert.doesNotMatch(app, /BG\.STREAK/)
+})
+
+test('오늘 기록이 있으면 같은 행 수정 API를 사용하고 추가 보상을 지급하지 않는다', () => {
+  assert.match(cameraFlow, /todayReading \? updateTodayReading : saveReading/)
+  assert.match(cameraFlow, /onReadingSaved\(result\)/)
+  assert.match(cameraFlow, /updated:\s*saveResult\.updated/)
+  assert.match(app, /coins:\s*st\.coins \+ \(updated \? 0 : reward\)/)
+})
+
+test('홈에서 오늘 기록을 촬영 또는 직접 입력으로 수정할 수 있다', () => {
+  assert.match(home, /recorded[\s\S]*오늘 기록 수정/)
+  assert.match(home, /onEditToday/)
+  assert.match(app, /onEditToday:\s*\(\) => patch\(\{ screen: ['"]camera['"], camStart: ['"]view['"] \}\)/)
 })
 
 test('스캔 요청 오류는 cancelled 메시지와 무관하게 서버 연결 오류로 안내한다', () => {
-  const capture = cameraFlow.match(/const capture = async \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
+  const capture = cameraFlow.match(/const capture = async \(source\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
 
   assert.match(capture, /try \{[\s\S]*await scanMeter\(file\)[\s\S]*\} catch \{[\s\S]*서버에 연결할 수 없습니다\.[\s\S]*setStep\(['"]view['"]\)/)
 })

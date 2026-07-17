@@ -43,6 +43,18 @@ export async function saveReading({ reading_m3, confidence = null, input_mode, r
   });
 }
 
+export async function getTodayReading() {
+  return request("/meter/today");
+}
+
+export async function updateTodayReading({ reading_m3, confidence = null, input_mode, reset_baseline = false }) {
+  return request("/meter/today", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reading_m3, confidence, input_mode, reset_baseline }),
+  });
+}
+
 export async function getHistory() {
   return request("/history");
 }

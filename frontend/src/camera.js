@@ -2,11 +2,16 @@
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
-export async function getPhoto() {
+export function isPhotoCancelled(error) {
+  if (!(error instanceof Error)) return false;
+  return /cancelled|canceled/i.test(error.message);
+}
+
+export async function getPhoto(source = "camera") {
   if (Capacitor.isNativePlatform()) {
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.Uri,
-      source: CameraSource.Camera,
+      source: source === "photos" ? CameraSource.Photos : CameraSource.Camera,
       quality: 90,
     });
     const blob = await (await fetch(photo.webPath)).blob();
@@ -17,6 +22,7 @@ export async function getPhoto() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
+    if (source === "camera") input.capture = "environment";
     input.onchange = () =>
       input.files[0] ? resolve(input.files[0]) : reject(new Error("cancelled"));
     input.oncancel = () => reject(new Error("cancelled"));

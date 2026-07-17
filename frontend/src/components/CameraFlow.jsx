@@ -1,8 +1,8 @@
 // 계량기 촬영과 OCR 보정 및 수동 입력 흐름을 제공하는 화면
 import React, { useEffect, useState } from 'react'
 import BG from '../mockData.js'
-import { getPhoto } from '../camera.js'
-import { scanMeter, saveReading, ApiError } from '../api.js'
+import { getPhoto, isPhotoCancelled } from '../camera.js'
+import { scanMeter, saveReading, updateTodayReading, ApiError } from '../api.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
 function MeterFace({ digits, scale = 1 }) {
@@ -65,10 +65,13 @@ function DialCol({ val, red, flagged, onChange }) {
   );
 }
 
-function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone }) {
+function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadingSaved, onDone }) {
   const sc = BG.SCENARIOS[scenario];
+  const initialReading = todayReading
+    ? Math.round(todayReading.reading_m3 * 1000).toString().padStart(7, '0').slice(-7)
+    : sc.digits;
   const [step, setStep] = useState(startStep || 'view'); // view → scan → confirm → done
-  const [digits, setDigits] = useState(sc.digits.split('').map(Number));
+  const [digits, setDigits] = useState(initialReading.split('').map(Number));
   const [confidence, setConfidence] = useState(null);
   const [saveResult, setSaveResult] = useState(null);
   const [error, setError] = useState('');
@@ -77,9 +80,9 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
   const flaggedIdx = 4;
 
   useEffect(() => {
-    setDigits(sc.digits.split('').map(Number));
+    setDigits(initialReading.split('').map(Number));
     setBaselinePrompt(null);
-  }, [scenario, sc.digits]);
+  }, [scenario, initialReading]);
 
   const reading = parseInt(digits.join(''), 10);
   const readingM3 = reading / 1000;
@@ -90,19 +93,19 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
   const reward = valid ? (saved >= 0 ? 12 : 2) : 0;
   const savedEnergy = Math.abs(saved) * BG.PER_LITER_KWH;
 
-  const capture = async () => {
+  const capture = async (source) => {
     setError('');
     setBaselinePrompt(null);
     setStep('scan');
     let file;
     try {
-      file = await getPhoto();
+      file = await getPhoto(source);
     } catch (caught) {
       setStep('view');
-      if (caught instanceof Error && caught.message === 'cancelled') {
+      if (isPhotoCancelled(caught)) {
         return;
       }
-      setError('서버에 연결할 수 없습니다. 다시 시도해주세요.');
+      setError('사진을 불러오지 못했습니다. 다시 시도해주세요.');
       return;
     }
 
@@ -128,12 +131,13 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
     setBaselinePrompt(null);
     setSaving(true);
     try {
-      const result = await saveReading({
+      const submitReading = todayReading ? updateTodayReading : saveReading;
+      const result = await submitReading({
         reading_m3: readingM3,
         confidence: inputMode === 'auto' ? confidence : null,
         input_mode: inputMode,
       });
-      onReadingSaved(result.recorded_at);
+      onReadingSaved(result);
       setSaveResult(result);
       setStep('done');
     } catch (caught) {
@@ -157,13 +161,14 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
     setError('');
     setSaving(true);
     try {
-      const result = await saveReading({
+      const submitReading = todayReading ? updateTodayReading : saveReading;
+      const result = await submitReading({
         reading_m3: baselinePrompt.reading_m3,
         confidence: baselinePrompt.confidence,
         input_mode: baselinePrompt.input_mode,
         reset_baseline: true,
       });
-      onReadingSaved(result.recorded_at);
+      onReadingSaved(result);
       setSaveResult(result);
       setBaselinePrompt(null);
       setStep('done');
@@ -256,10 +261,10 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
             )}
             {!scanning && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 44 }}>
-                <button className="press" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 16, width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <button className="press" onClick={() => capture('photos')} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 16, width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <MIcon name="image" size={24} color="#fff" fill={0}></MIcon>
                 </button>
-                <button className="press" onClick={capture} aria-label="촬영" style={{
+                <button className="press" onClick={() => capture('camera')} aria-label="촬영" style={{
                   width: 78, height: 78, borderRadius: '50%', cursor: 'pointer',
                   background: '#fff', border: '5px solid rgba(255,255,255,0.35)', backgroundClip: 'padding-box',
                 }}></button>
@@ -396,7 +401,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
           <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 이 값을 기준으로 계산을 시작할게요.</div>
           <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
-        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0, updated: saveResult.updated })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
     );
   }
@@ -410,7 +415,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
           <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>다음 검침부터 사용량과 요금을 계산해 드릴게요.</div>
           <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
-        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: true, usage: 0, reward: 0 })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: true, usage: 0, reward: 0, updated: saveResult.updated })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
     );
   }
@@ -465,7 +470,7 @@ function CameraFlow({ scenario, goal, startStep, onClose, onReadingSaved, onDone
         </div>
 
         <div style={{ flex: 1 }}></div>
-        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage, reward })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage, reward, updated: saveResult.updated })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
 );
 }

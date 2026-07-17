@@ -9,10 +9,10 @@ import LedgerScreen from './components/LedgerScreen.jsx'
 import ReportScreen from './components/ReportScreen.jsx'
 import ShopScreen, { SHOP_ITEMS, wornImgFor, spriteFor, framesFor, facesFor } from './components/ShopScreen.jsx'
 import SettingsScreen, { AttendanceModal, RegionModal } from './components/SettingsScreen.jsx'
-import { saveSettings } from './api.js'
-import { deleteDeviceData } from './api.js'
+import { deleteDeviceData, getHistory, getTodayReading, saveSettings } from './api.js'
 import { getRegionCode } from './regions.js'
 import { notificationService, localDateKeyFromUtcTimestamp } from './notifications.js'
+import { calculateReadingStreak } from './readingHistory.js'
 import './App.css'
 
 const STORE_KEY = 'banguli_app_v1'
@@ -38,12 +38,27 @@ function App() {
   const [showAttend, setShowAttend] = useState(false)
   const [savingInitialRegion, setSavingInitialRegion] = useState(false)
   const [initialRegionError, setInitialRegionError] = useState(false)
+  const [todayReading, setTodayReading] = useState(null)
+  const [streak, setStreak] = useState(0)
 
   useEffect(() => {
     const today = new Date().toDateString()
     if (st.regionSet && st.onboarded && st.lastAttend !== today) setShowAttend(true)
   }, [])
   useEffect(() => { localStorage.setItem(STORE_KEY, JSON.stringify(st)) }, [st])
+  useEffect(() => {
+    let active = true
+    void Promise.all([getTodayReading(), getHistory()]).then(([todayReading, history]) => {
+      if (!active) return
+      setTodayReading(todayReading)
+      setStreak(calculateReadingStreak(history, todayReading))
+      patch({
+        recorded: Boolean(todayReading),
+        lastReadingDate: todayReading ? localDateKeyFromUtcTimestamp(todayReading.recorded_at) : null,
+      })
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
   useEffect(() => {
     if (st.notificationEnabled) {
       void notificationService.refresh({
@@ -103,18 +118,21 @@ function App() {
     if (!result.enabled) patch({ notificationEnabled: false })
     return result
   }
-  const completeReading = ({ firstReading, usage: nextUsage, reward }) => {
+  const completeReading = ({ firstReading, usage: nextUsage, reward, updated = false }) => {
     patch({
-      recorded: !firstReading,
+      recorded: true,
       usage: nextUsage,
-      coins: st.coins + reward,
+      coins: st.coins + (updated ? 0 : reward),
       screen: 'home',
       camStart: null,
     })
   }
-  const recordReading = (recordedAt) => {
-    const lastReadingDate = localDateKeyFromUtcTimestamp(recordedAt)
+  const recordReading = (result) => {
+    const nextTodayReading = { reading_m3: result.reading_m3, recorded_at: result.recorded_at }
+    const lastReadingDate = localDateKeyFromUtcTimestamp(result.recorded_at)
+    setTodayReading(nextTodayReading)
     patch({ lastReadingDate })
+    void getHistory().then((history) => setStreak(calculateReadingStreak(history, nextTodayReading))).catch(() => {})
     if (st.notificationEnabled) {
       void notificationService.refresh({ time: st.notificationTime, lastReadingDate }).catch(() => {})
     }
@@ -143,13 +161,14 @@ function App() {
     localStorage.removeItem('device_id')
     setShowAttend(false)
     setSt({ ...DEFAULT_STATE })
+    setTodayReading(null)
+    setStreak(0)
   }
 
   const goal = BG.GOAL_BY_HOUSEHOLD[st.house] || 550
   const scenario = '절약'
   const usage = st.recorded ? (st.usage || BG.SCENARIOS[scenario].usage) : BG.SCENARIOS[scenario].usage
   const stage = st.recorded ? 1 : 2
-  const streak = BG.STREAK + (st.recorded ? 1 : 0)
   const tip = BG.TIPS[new Date().getDate() % BG.TIPS.length]
   const unit = st.ledgerUnit || 'L'
   const tariff = REGION_TARIFF[st.region] || 1.0
@@ -161,7 +180,7 @@ function App() {
     content = <Onboarding onDone={(house) => patch({ onboarded: true, house, screen: 'home' })} />
   } else if (st.screen === 'camera') {
     content = (
-      <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'}
+      <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'} todayReading={todayReading}
         onClose={() => patch({ screen: 'home', camStart: null })}
         onReadingSaved={recordReading}
         onDone={completeReading}
@@ -172,6 +191,7 @@ function App() {
       stage, recorded: st.recorded, usage, goal, coins: st.coins, streak, tip,
       house: st.house, userName: st.userName, dolphinName: st.dolphinName, onNav: nav,
       onManual: () => patch({ screen: 'camera', camStart: 'manual' }),
+      onEditToday: () => patch({ screen: 'camera', camStart: 'view' }),
       wornImg: wornImgFor(st.equipped), sprite: spriteFor(st.equipped), frames: framesFor(st.equipped), faces: facesFor(st.equipped),
       owned: st.owned, equipped: st.equipped, onEquip: (id) => patch({ equipped: id }),
       placedItems: st.placed.map((id) => { const item = decorOf(id); return item?.img ? { id, img: item.img, size: item.size || 56 } : null }).filter(Boolean),
