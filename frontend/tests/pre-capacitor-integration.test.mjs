@@ -435,7 +435,7 @@ test('파일 선택 취소는 서버 연결 오류로 표시하지 않고 촬영
   const cancelConditionIndex = photoCatch.indexOf('if (isPhotoCancelled(caught))')
   const photoErrorIndex = photoCatch.indexOf("setError('사진을 불러오지 못했습니다. 다시 시도해주세요.')")
 
-  assert.match(capture, /try \{[\s\S]*await getPhoto\(source\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\} finally \{[\s\S]*setCapturing\(false\)[\s\S]*\}[\s\S]*await scanMeter\(file\)/)
+  assert.match(capture, /try \{[\s\S]*await getPhoto\(source\)[\s\S]*\} catch \(caught\) \{[\s\S]*setStep\(['"]view['"]\)[\s\S]*return;[\s\S]*\} finally \{[\s\S]*setCapturing\(false\)[\s\S]*\}[\s\S]*rememberScanFile\(file\)[\s\S]*await analyzeFile\(file\)/)
   assert.doesNotMatch(cancelBranch, /setError|scanMeter/)
   assert.match(cancelBranch, /return;/)
   assert.ok(cancelConditionIndex >= 0)
@@ -464,6 +464,16 @@ test('사진 준비 오류와 서버 전송 오류를 서로 다른 문구로 �
   assert.match(cameraFlow, /isPhotoCancelled\(caught\)/)
   assert.match(cameraFlow, /사진을 불러오지 못했습니다\. 다시 시도해주세요\./)
   assert.match(cameraFlow, /서버에 연결할 수 없습니다\. 다시 시도해주세요\./)
+})
+
+test('인식 중에는 선택한 사진을 표시하고 실패하면 같은 사진으로 재시도한다', () => {
+  assert.match(cameraFlow, /const \[scanFile, setScanFile\] = useState\(null\)/)
+  assert.match(cameraFlow, /URL\.createObjectURL\(file\)/)
+  assert.match(cameraFlow, /URL\.revokeObjectURL\(scanPreviewUrl\)/)
+  assert.match(cameraFlow, /src=\{scanPreviewUrl\}[^>]*alt=["']인식할 계량기 사진["']/)
+  assert.match(cameraFlow, /const retryScan = \(\) =>[\s\S]*analyzeFile\(scanFile\)/)
+  assert.match(cameraFlow, /같은 사진 다시 시도/)
+  assert.match(cameraFlow, /scanFailed[\s\S]*직접 입력/)
 })
 
 test('연속 기록은 목 데이터가 아니라 실제 검침 날짜의 연속성으로 계산한다', async () => {
@@ -501,9 +511,9 @@ test('홈에서 오늘 기록을 촬영 또는 직접 입력으로 수정할 수
 })
 
 test('스캔 요청 오류는 cancelled 메시지와 무관하게 서버 연결 오류로 안내한다', () => {
-  const capture = cameraFlow.match(/const capture = async \(source\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
+  const analyzeFile = cameraFlow.match(/const analyzeFile = async \(file\) => \{([\s\S]*?)\n  \};/)?.[1] ?? ''
 
-  assert.match(capture, /try \{[\s\S]*await scanMeter\(file\)[\s\S]*\} catch \{[\s\S]*서버에 연결할 수 없습니다\.[\s\S]*setStep\(['"]view['"]\)/)
+  assert.match(analyzeFile, /try \{[\s\S]*await scanMeter\(file\)[\s\S]*\} catch \(caught\) \{[\s\S]*서버에 연결할 수 없습니다\.[\s\S]*setStep\(['"]scan-error['"]\)/)
 })
 
 test('동일하거나 감소한 검침값의 422 안내를 백엔드 검증 조건과 맞춘다', () => {
