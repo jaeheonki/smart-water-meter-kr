@@ -15,18 +15,59 @@
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" alt="Capacitor 8">
 </p>
 
+## 팀원
+
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/jaeheonki">
+        <img src="https://github.com/jaeheonki.png?size=100" width="100" alt="김재헌"><br>
+        <sub><b>김재헌 (PM)</b></sub>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/wjdtmdgh87-lgtm">
+        <img src="https://github.com/wjdtmdgh87-lgtm.png?size=100" width="100" alt="정승호"><br>
+        <sub><b>정승호</b></sub>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/wony98">
+        <img src="https://github.com/wony98.png?size=100" width="100" alt="노승원"><br>
+        <sub><b>노승원</b></sub>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/katze418">
+        <img src="https://github.com/katze418.png?size=100" width="100" alt="유수빈"><br>
+        <sub><b>유수빈</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
 ## YOLOX-s 2단계 자동 검침
 
 방울이의 핵심은 수도 계량기 사진에서 숫자 표시부를 찾고 검침값을 자동으로 읽는 YOLOX-s 기반 파이프라인이다. 프론트엔드는 촬영 이미지를 FastAPI로 보내며, 서버가 두 개의 YOLOX-s 모델을 순서대로 실행한다.
 
 ```mermaid
-flowchart LR
-    A["계량기 사진"] --> B["Model 1<br>숫자 표시부 검출"]
-    B --> C["표시부 자르기·회전"]
-    C --> D["Model 2<br>숫자 0~9 검출"]
-    D --> E["검침값 조합"]
-    E --> F["사용자 확인·수정"]
-    F --> G["저장·리포트 계산"]
+flowchart TB
+    subgraph recognition["1. 자동 인식"]
+        direction LR
+        A["계량기 사진"] --> B["Model 1<br>숫자 표시부 검출"]
+        B --> C["표시부 자르기·회전"]
+        C --> D["Model 2<br>숫자 0~9 검출"]
+    end
+
+    subgraph confirmation["2. 확인·저장"]
+        direction RL
+        SPACER["우측 조작 아이콘 여백"] ~~~ E["검침값 조합"]
+        E --> F["사용자 확인·수정"]
+        F --> G["저장·리포트 계산"]
+    end
+
+    recognition --> confirmation
+    style SPACER fill:transparent,stroke:transparent,color:transparent
 ```
 
 ### 모델 실험과 선택
@@ -129,19 +170,3 @@ iOS는 현재 빌드 산출물이 없다. 기존 React UI를 재사용할 수 �
 - [EC2 Docker 배포 가이드](docs/deployment-guide.md).
 
 운영 API는 EC2 Docker에서 `http://13.53.120.64:8000`으로 실행된다. 배포·업데이트·로그·복구 절차는 EC2 배포 가이드를 따른다.
-
-## 팀원
-
-<table>
-  <tr>
-    <td align="center" width="160">
-      <a href="https://github.com/jaeheonki">
-        <img src="https://github.com/jaeheonki.png?size=100" width="100" alt="김재헌"><br>
-        <sub><b>김재헌 (PM)</b></sub>
-      </a>
-    </td>
-    <td align="center" width="160"><br><sub><b>정승호</b></sub></td>
-    <td align="center" width="160"><br><sub><b>노승원</b></sub></td>
-    <td align="center" width="160"><br><sub><b>유수빈</b></sub></td>
-  </tr>
-</table>

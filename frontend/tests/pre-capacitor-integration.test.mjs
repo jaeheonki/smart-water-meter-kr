@@ -66,6 +66,24 @@ test('루트 README는 주요 기능보다 먼저 YOLOX-s 모델 선택과 2단�
   assert.match(rootReadme, /docs\/yolox-model-pipeline\.md/)
 })
 
+test('루트 README는 상단에 팀원 프로필을 표시하고 자동 검침 흐름의 우측 공간을 확보한다', () => {
+  const teamSection = rootReadme.indexOf('## 팀원')
+  const modelSection = rootReadme.indexOf('## YOLOX-s 2단계 자동 검침')
+
+  assert.ok(teamSection >= 0)
+  assert.ok(modelSection > teamSection)
+
+  for (const githubId of ['jaeheonki', 'wjdtmdgh87-lgtm', 'wony98', 'katze418']) {
+    assert.match(rootReadme, new RegExp(`href="https://github\\.com/${githubId}"`))
+    assert.match(rootReadme, new RegExp(`src="https://github\\.com/${githubId}\\.png\\?size=100"`))
+  }
+
+  assert.match(rootReadme, /flowchart TB/)
+  assert.match(rootReadme, /subgraph recognition\["1\. 자동 인식"\][\s\S]*direction LR/)
+  assert.match(rootReadme, /subgraph confirmation\["2\. 확인·저장"\][\s\S]*direction RL/)
+  assert.match(rootReadme, /SPACER\["우측 조작 아이콘 여백"\] ~~~ E\["검침값 조합"\]/)
+})
+
 test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그인을 등록한다', () => {
   assert.match(androidManifest, /<uses-permission android:name="android.permission.CAMERA"\s*\/>/)
   assert.equal(packageJson.dependencies['@capacitor-community/camera-preview'], '^8.0.1')
