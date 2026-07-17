@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react'
 import BG from '../mockData.js'
 import { cameraPreviewController, getPhoto, isPhotoCancelled } from '../camera.js'
-import { scanMeter, saveReading, updateTodayReading, ApiError } from '../api.js'
+import { scanMeter, saveReading, updateTodayReading, getTodayReading, ApiError } from '../api.js'
+import { persistReading } from '../readingSave.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
 function MeterFace({ digits, scale = 1 }) {
@@ -216,11 +217,16 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
     setBaselinePrompt(null);
     setSaving(true);
     try {
-      const submitReading = todayReading ? updateTodayReading : saveReading;
-      const result = await submitReading({
-        reading_m3: readingM3,
-        confidence: inputMode === 'auto' ? confidence : null,
-        input_mode: inputMode,
+      const { result } = await persistReading({
+        todayReading,
+        payload: {
+          reading_m3: readingM3,
+          confidence: inputMode === 'auto' ? confidence : null,
+          input_mode: inputMode,
+        },
+        saveReading,
+        updateTodayReading,
+        getTodayReading,
       });
       onReadingSaved(result);
       setSaveResult(result);
@@ -246,12 +252,17 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
     setError('');
     setSaving(true);
     try {
-      const submitReading = todayReading ? updateTodayReading : saveReading;
-      const result = await submitReading({
-        reading_m3: baselinePrompt.reading_m3,
-        confidence: baselinePrompt.confidence,
-        input_mode: baselinePrompt.input_mode,
-        reset_baseline: true,
+      const { result } = await persistReading({
+        todayReading,
+        payload: {
+          reading_m3: baselinePrompt.reading_m3,
+          confidence: baselinePrompt.confidence,
+          input_mode: baselinePrompt.input_mode,
+          reset_baseline: true,
+        },
+        saveReading,
+        updateTodayReading,
+        getTodayReading,
       });
       onReadingSaved(result);
       setSaveResult(result);

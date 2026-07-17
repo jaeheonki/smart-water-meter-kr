@@ -231,9 +231,9 @@ test('검침 저장 성공 직후 일반 저장과 baseline 저장 모두 record
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKeyFromUtcTimestamp\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
   assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, todayReading, onClose, onReadingSaved, onDone \}\)/)
   assert.equal(cameraFlow.match(/onReadingSaved\(result\)/g)?.length, 2)
-  assert.equal(cameraFlow.match(/const submitReading = todayReading \? updateTodayReading : saveReading/g)?.length, 2)
-  assert.match(cameraFlow, /const confirmReading[\s\S]*await submitReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
-  assert.match(cameraFlow, /const confirmBaseline[\s\S]*await submitReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.equal(cameraFlow.match(/const \{ result \} = await persistReading\(/g)?.length, 2)
+  assert.match(cameraFlow, /const confirmReading[\s\S]*await persistReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
+  assert.match(cameraFlow, /const confirmBaseline[\s\S]*await persistReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
   assert.match(app, /<CameraFlow[\s\S]*onReadingSaved=\{recordReading\}[\s\S]*onDone=\{completeReading\}/)
   const completeReading = app.match(/const completeReading = \([^\n]+\) => \{([\s\S]*?)\n  \}/)?.[1] ?? ''
   assert.doesNotMatch(completeReading, /localDateKey|lastReadingDate|notificationService/)
@@ -498,7 +498,7 @@ test('앱 시작 시 오늘 기록과 실제 이력을 조회하고 고정 13일
 })
 
 test('오늘 기록이 있으면 같은 행 수정 API를 사용하고 추가 보상을 지급하지 않는다', () => {
-  assert.match(cameraFlow, /todayReading \? updateTodayReading : saveReading/)
+  assert.match(cameraFlow, /persistReading\(\{[\s\S]*todayReading,[\s\S]*saveReading,[\s\S]*updateTodayReading,[\s\S]*getTodayReading/)
   assert.match(cameraFlow, /onReadingSaved\(result\)/)
   assert.match(cameraFlow, /updated:\s*saveResult\.updated/)
   assert.match(app, /coins:\s*st\.coins \+ \(updated \? 0 : reward\)/)
