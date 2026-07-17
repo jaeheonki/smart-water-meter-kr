@@ -4,6 +4,7 @@
 # calc_history()는 실제 계산 모듈을 사용한다 (mock 없음).
 
 from datetime import datetime
+from sqlmodel import select
 from src.api.models import Reading
 
 HEADERS_A = {"X-Device-ID": "device-A"}
@@ -89,6 +90,30 @@ def test_history_replacement_skips_only_pair_entering_baseline(client, session):
     assert [(item["start_label"], item["end_label"], item["usage_m3"]) for item in items] == [
         ("2026-03-15", "2026-04-15", 15.0),
         ("2026-01-15", "2026-02-15", 100.0),
+    ]
+
+
+def test_history_skips_legacy_decrease_without_mutating_readings(client, session):
+    """기준점 도입 전 감소 구간은 제외하고 이후 정상 구간을 계산한다."""
+    _r(session, "device-A", 100.0, 2026, 1)
+    _r(session, "device-A", 20.0, 2026, 2)
+    _r(session, "device-A", 35.0, 2026, 3)
+
+    response = client.get("/history", headers=HEADERS_A)
+
+    assert response.status_code == 200
+    assert [(item["start_label"], item["end_label"], item["usage_m3"]) for item in response.json()] == [
+        ("2026-02-15", "2026-03-15", 15.0),
+    ]
+    readings = session.exec(
+        select(Reading)
+        .where(Reading.device_id == "device-A")
+        .order_by(Reading.recorded_at.asc())
+    ).all()
+    assert [(reading.reading_m3, reading.is_baseline) for reading in readings] == [
+        (100.0, False),
+        (20.0, False),
+        (35.0, False),
     ]
 
 

@@ -37,7 +37,7 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
 
     periods = []
     for prev, current in zip(readings, readings[1:]):
-        if current.is_baseline:
+        if current.is_baseline or current.reading_m3 <= prev.reading_m3:
             continue
         labeled = [
             (prev.recorded_at.strftime("%Y-%m-%d"), prev.reading_m3),
