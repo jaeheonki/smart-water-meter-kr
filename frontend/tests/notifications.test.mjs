@@ -16,7 +16,7 @@ const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 test('앱은 알림 어댑터로 시작 refresh와 action listener cleanup을 수행한다', () => {
   assert.doesNotMatch(app, /@capacitor\/local-notifications/)
   assert.match(app, /notificationService\.refresh\(\{[\s\S]*time: st\.notificationTime,[\s\S]*lastReadingDate: st\.lastReadingDate,[\s\S]*\}\)\.then\(\(result\) => \{[\s\S]*if \(!result\.enabled\) patch\(\{ notificationEnabled: false \}\)[\s\S]*\}\)\.catch\(\(\) => \{\}\)/)
-  assert.match(app, /notificationService\.listenForActions\(\(\) => patch\(\{ screen: ['"]camera['"], camStart: ['"]view['"] \}\)\)/)
+  assert.match(app, /notificationService\.listenForActions\(\(\) => nav\(['"]camera['"]\)\)/)
   assert.match(app, /return \(\) => \{[\s\S]*void listener\??\.remove\(\)[\s\S]*\}/)
 })
 

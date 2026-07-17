@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import BG from '../mockData.js'
 import { cameraPreviewController, getPhoto, isPhotoCancelled } from '../camera.js'
-import { scanMeter, saveReading, updateTodayReading, getTodayReading, ApiError } from '../api.js'
+import { scanMeter, saveReading, updateTodayReading, ApiError } from '../api.js'
 import { persistReading } from '../readingSave.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
@@ -226,7 +226,6 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
         },
         saveReading,
         updateTodayReading,
-        getTodayReading,
       });
       onReadingSaved(result);
       setSaveResult(result);
@@ -262,7 +261,6 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
         },
         saveReading,
         updateTodayReading,
-        getTodayReading,
       });
       onReadingSaved(result);
       setSaveResult(result);
@@ -510,6 +508,20 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
           <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
         </Card>
         <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0, updated: saveResult.updated })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
+      </div>
+    );
+  }
+
+  if (step === 'done' && saveResult?.updated) {
+    return (
+      <div data-screen-label="오늘 검침 수정 완료" className="fade-up" style={{ flex: 1, minHeight: 0, padding: '24px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Card style={{ textAlign: 'center' }}>
+          <MIcon name="check_circle" size={52} color="#2C8A60"></MIcon>
+          <div className="jua" style={{ fontSize: 25, color: BGC.ink, marginTop: 12 }}>오늘 검침값을 수정했어요</div>
+          <div style={{ color: BGC.sub, fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>새 기록을 추가하지 않고 오늘 기록만 바꿨어요.</div>
+          <div className="jua" style={{ fontSize: 23, color: BGC.skyDeep, marginTop: 18 }}>{saveResult.reading_m3.toFixed(3)} ㎥</div>
+        </Card>
+        <PrimaryBtn icon="home" onClick={() => onDone({ firstReading: false, usage: 0, reward: 0, updated: true })} style={{ marginTop: 14 }}>방울이에게 가기</PrimaryBtn>
       </div>
     );
   }

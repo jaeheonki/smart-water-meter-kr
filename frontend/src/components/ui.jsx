@@ -350,7 +350,7 @@ const NAV_ITEMS = [
   { id: 'shop', icon: 'storefront', label: '상점' },
 ];
 
-function BottomNav({ active, onNav }) {
+function BottomNav({ active, onNav, recorded }) {
   const item = (it) => {
     const on = active === it.id;
     return (
@@ -371,16 +371,18 @@ function BottomNav({ active, onNav }) {
         <div style={{ width: 92 }}></div>
         {item(NAV_ITEMS[2])}{item(NAV_ITEMS[3])}
       </div>
-      <button className="press" onClick={() => onNav('camera')} aria-label="계량기 촬영" style={{
+      <button className="press" onClick={() => onNav('camera')} disabled={recorded}
+        aria-label={recorded ? '오늘 검침 완료' : '계량기 촬영'} style={{
         position: 'absolute', left: '50%', top: -36, transform: 'translateX(-50%)',
-        width: 78, height: 78, borderRadius: '50%', cursor: 'pointer',
+        width: 78, height: 78, borderRadius: '50%', cursor: recorded ? 'default' : 'pointer',
+        opacity: recorded ? 0.68 : 1,
         background: `linear-gradient(180deg, #FFDD63, ${BGC.yellow})`,
         border: '5px solid #fff',
         boxShadow: '0 9px 20px rgba(33,68,89,0.32), 0 0 0 7px rgba(255,206,51,0.20)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
       }}>
-        <MIcon name="photo_camera" size={32} color="#7A5A0A"></MIcon>
-        <span className="jua" style={{ fontSize: 14, color: '#7A5A0A', lineHeight: 1 }}>검침</span>
+        <MIcon name={recorded ? 'check' : 'photo_camera'} size={32} color="#7A5A0A"></MIcon>
+        <span className="jua" style={{ fontSize: 14, color: '#7A5A0A', lineHeight: 1 }}>{recorded ? '완료' : '검침'}</span>
       </button>
     </div>
   );

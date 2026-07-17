@@ -75,7 +75,7 @@ function App() {
   useEffect(() => {
     let listener
     let disposed = false
-    void notificationService.listenForActions(() => patch({ screen: 'camera', camStart: 'view' }))
+    void notificationService.listenForActions(() => nav('camera'))
       .then((handle) => {
         if (disposed) void handle.remove().catch(() => {})
         else listener = handle
@@ -101,7 +101,10 @@ function App() {
   })
 
   const patch = (value) => setSt((state) => ({ ...state, ...value }))
-  const nav = (screen) => patch({ screen })
+  const nav = (screen) => setSt((state) => {
+    if (screen === 'camera' && state.recorded) return state
+    return { ...state, screen }
+  })
   const updateNotificationSettings = async ({ enabled, time }) => {
     const result = enabled
       ? await notificationService.enable({ time, lastReadingDate: st.lastReadingDate })
@@ -220,7 +223,7 @@ function App() {
     content = (
       <div className="app-shell">
         <div id="bgScreen" className="app-content">{screens[st.screen] || screens.home}</div>
-        <BottomNav active={st.screen} onNav={nav} />
+        <BottomNav active={st.screen} onNav={nav} recorded={st.recorded} />
       </div>
     )
   }

@@ -10,6 +10,7 @@ const styles = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
 const settings = readFileSync(new URL('../src/components/SettingsScreen.jsx', import.meta.url), 'utf8')
 const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import.meta.url), 'utf8')
 const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
+const ui = readFileSync(new URL('../src/components/ui.jsx', import.meta.url), 'utf8')
 const camera = readFileSync(new URL('../src/camera.js', import.meta.url), 'utf8')
 const home = readFileSync(new URL('../src/components/HomeScreen.jsx', import.meta.url), 'utf8')
 const shop = readFileSync(new URL('../src/components/ShopScreen.jsx', import.meta.url), 'utf8')
@@ -524,7 +525,8 @@ test('앱 시작 시 오늘 기록과 실제 이력을 조회하고 고정 13일
 })
 
 test('오늘 기록이 있으면 같은 행 수정 API를 사용하고 추가 보상을 지급하지 않는다', () => {
-  assert.match(cameraFlow, /persistReading\(\{[\s\S]*todayReading,[\s\S]*saveReading,[\s\S]*updateTodayReading,[\s\S]*getTodayReading/)
+  assert.match(cameraFlow, /persistReading\(\{[\s\S]*todayReading,[\s\S]*saveReading,[\s\S]*updateTodayReading/)
+  assert.doesNotMatch(cameraFlow, /getTodayReading/)
   assert.match(cameraFlow, /onReadingSaved\(result\)/)
   assert.match(cameraFlow, /updated:\s*saveResult\.updated/)
   assert.match(app, /coins:\s*st\.coins \+ \(updated \? 0 : reward\)/)
@@ -534,6 +536,23 @@ test('홈에서 오늘 기록을 촬영 또는 직접 입력으로 수정할 수
   assert.match(home, /recorded[\s\S]*오늘 기록 수정/)
   assert.match(home, /onEditToday/)
   assert.match(app, /onEditToday:\s*\(\) => patch\(\{ screen: ['"]camera['"], camStart: ['"]view['"] \}\)/)
+})
+
+test('오늘 검침 후 중앙 검침은 잠기고 홈의 수정 경로만 유지된다', () => {
+  assert.match(app, /<BottomNav active=\{st\.screen\} onNav=\{nav\} recorded=\{st\.recorded\}/)
+  assert.match(app, /if \(screen === ['"]camera['"] && state\.recorded\) return state/)
+  assert.match(ui, /function BottomNav\(\{ active, onNav, recorded \}\)/)
+  assert.match(ui, /disabled=\{recorded\}/)
+  assert.match(home, /recorded && \([\s\S]*오늘 기록 수정/)
+})
+
+test('오늘 기록 수정은 첫 검침 축하 대신 수정 완료를 표시한다', () => {
+  const updatedScreen = cameraFlow.indexOf("step === 'done' && saveResult?.updated")
+  const firstReadingScreen = cameraFlow.indexOf("step === 'done' && saveResult?.first_reading")
+
+  assert.ok(updatedScreen >= 0)
+  assert.ok(firstReadingScreen > updatedScreen)
+  assert.match(cameraFlow, /오늘 검침값을 수정했어요/)
 })
 
 test('스캔 요청 오류는 cancelled 메시지와 무관하게 서버 연결 오류로 안내한다', () => {
