@@ -5,7 +5,7 @@
 <h1 align="center">방울이</h1>
 
 <p align="center">
-  수도 계량기 사진을 인식하고 사용량·요금·환경 영향을 알려주는 스마트 수도 계량기 앱
+  YOLOX-s 2단계 모델로 수도 계량기 사진을 읽고 사용량·요금·환경 영향을 알려주는 앱
 </p>
 
 <p align="center">
@@ -14,6 +14,32 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=20232A" alt="React 19">
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" alt="Capacitor 8">
 </p>
+
+## YOLOX-s 2단계 자동 검침
+
+방울이의 핵심은 수도 계량기 사진에서 숫자 표시부를 찾고 검침값을 자동으로 읽는 YOLOX-s 기반 파이프라인이다. 프론트엔드는 촬영 이미지를 FastAPI로 보내며, 서버가 두 개의 YOLOX-s 모델을 순서대로 실행한다.
+
+```mermaid
+flowchart LR
+    A["계량기 사진"] --> B["Model 1<br>숫자 표시부 검출"]
+    B --> C["표시부 자르기·회전"]
+    C --> D["Model 2<br>숫자 0~9 검출"]
+    D --> E["검침값 조합"]
+    E --> F["사용자 확인·수정"]
+    F --> G["저장·리포트 계산"]
+```
+
+### 모델 실험과 선택
+
+| 모델 | 진행 결과 | 선택 판단 |
+|---|---|---|
+| YOLOv8s | 검토 후 제외 | AGPL-3.0 라이선스를 고려해 학습 전에 제외 |
+| YOLOX-Tiny | 학습 시도 후 실패 | 성공한 가중치와 평가 결과를 확보하지 못함 |
+| YOLOv9s | 학습 시도 후 실패 | 학습 실패로 비교 후보에서 제외 |
+| RF-DETR-nano | 비교 평가 | 검출 성능은 유사했지만 추론 시간 미측정 |
+| **YOLOX-s** | **최종 선정·현재 적용** | 추론 시간을 실측했고 ONNX 변환과 FastAPI 연동이 용이 |
+
+현재 Model 1은 계량기의 숫자 표시부를 검출하고, Model 2는 잘라낸 표시부에서 숫자 0~9를 검출한다. 모델별 실험 수치, 선정 근거, 회전 보정과 후처리 방식은 [YOLOX 모델 선정과 검침 파이프라인](docs/yolox-model-pipeline.md)에 정리돼 있다.
 
 ## 주요 기능
 
@@ -29,7 +55,8 @@
 | 영역 | 구성 | 역할 |
 |---|---|---|
 | Backend | Python 3.12, FastAPI, SQLModel, SQLite | 검침, 이력, 지역 설정과 요금 계산 API |
-| Model | YOLOX, OpenCV | 수도 계량기 숫자 인식 |
+| Model 1 | YOLOX-s, ONNX Runtime | 수도 계량기 숫자 표시부 검출 |
+| Model 2 | YOLOX-s, ONNX Runtime | 표시부 내부 숫자 0~9 검출 |
 | Frontend | React 19, Vite 8 | 모바일 중심 웹 UI와 API 연동 |
 | Mobile | Capacitor 8, Android | 카메라와 로컬 알림을 사용하는 앱 컨테이너 |
 | Operation | Docker, AWS EC2 | 운영 API 실행과 데이터·가중치 영속화 |
@@ -64,7 +91,7 @@ src/                    FastAPI, YOLOX 추론, 17개 지역 요금 계산
 tests/                  Python API·도메인 테스트
 frontend/               React UI, Node 테스트, Capacitor Android
 data/                   로컬 SQLite 데이터, Git 제외
-weights/                로컬 모델 가중치
+weights/                표시부·숫자 YOLOX-s ONNX 가중치
 docs/                   프론트 인수인계, API와 EC2 배포 문서
 output/                 팀 확인용 빌드 산출물 안내
 ```
@@ -95,6 +122,7 @@ iOS는 현재 빌드 산출물이 없다. 기존 React UI를 재사용할 수 �
 
 ## 문서
 
+- [YOLOX 모델 선정과 검침 파이프라인](docs/yolox-model-pipeline.md).
 - [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md).
 - [프론트엔드 연동 인수인계 PDF](docs/banguli-frontend-integration.pdf).
 - [API 사용 가이드](docs/api-guide.md).

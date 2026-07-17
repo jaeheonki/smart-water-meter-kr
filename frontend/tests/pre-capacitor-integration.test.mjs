@@ -17,6 +17,7 @@ const replacementHistoryUrl = new URL('../src/components/ReplacementHistoryScree
 const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(replacementHistoryUrl, 'utf8') : ''
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
+const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
 const expectedRegions = {
   seoul: '서울', busan: '부산', daegu: '대구', incheon: '인천', gwangju: '광주',
   daejeon: '대전', ulsan: '울산', sejong: '세종', gyeonggi: '경기', gangwon: '강원',
@@ -28,6 +29,20 @@ test('신규 설치의 코인은 0에서 시작한다', () => {
   const defaultState = app.match(/const DEFAULT_STATE = \{[\s\S]*?\n\}/)?.[0]
   assert.ok(defaultState)
   assert.match(defaultState, /\bcoins:\s*0\b/)
+})
+
+test('루트 README는 주요 기능보다 먼저 YOLOX-s 모델 선택과 2단계 검침 흐름을 설명한다', () => {
+  const modelSection = rootReadme.indexOf('## YOLOX-s 2단계 자동 검침')
+  const featureSection = rootReadme.indexOf('## 주요 기능')
+
+  assert.ok(modelSection >= 0)
+  assert.ok(featureSection > modelSection)
+  assert.match(rootReadme, /YOLOX-Tiny[\s\S]*학습 시도 후 실패/)
+  assert.match(rootReadme, /YOLOv9s[\s\S]*학습 시도 후 실패/)
+  assert.match(rootReadme, /RF-DETR-nano[\s\S]*비교 평가/)
+  assert.match(rootReadme, /YOLOX-s[\s\S]*최종 선정·현재 적용/)
+  assert.match(rootReadme, /Model 1[\s\S]*숫자 표시부[\s\S]*Model 2[\s\S]*숫자 0~9/)
+  assert.match(rootReadme, /docs\/yolox-model-pipeline\.md/)
 })
 
 test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그인을 등록한다', () => {
