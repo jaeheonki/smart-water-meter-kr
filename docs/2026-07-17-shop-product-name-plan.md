@@ -26,7 +26,7 @@
 - Consumes: `ShopScreen.jsx`가 내보내는 `SHOP_ITEMS` 배열.
 - Produces: 교정된 화면 표시용 `name` 다섯 개와 유지되는 `민트 스툴`.
 
-- [ ] **Step 1: 실패하는 상품명 계약 테스트를 작성한다**
+- [x] **Step 1: 실패하는 상품명 계약 테스트를 작성한다**
 
 ```javascript
 test('상점 상품명은 오탈자와 낯선 표현을 교정한다', () => {
@@ -39,13 +39,13 @@ test('상점 상품명은 오탈자와 낯선 표현을 교정한다', () => {
 })
 ```
 
-- [ ] **Step 2: 테스트가 기존 잘못된 상품명 때문에 실패하는지 확인한다**
+- [x] **Step 2: 테스트가 기존 잘못된 상품명 때문에 실패하는지 확인한다**
 
 Run: `node --test frontend/tests/pre-capacitor-integration.test.mjs`
 
 Expected: 새 상품명 계약 테스트가 실패한다.
 
-- [ ] **Step 3: 표시용 상품명만 최소 변경한다**
+- [x] **Step 3: 표시용 상품명만 최소 변경한다**
 
 ```javascript
 { id: 'tulip', name: '튤립 화분', ... }
@@ -55,7 +55,7 @@ Expected: 새 상품명 계약 테스트가 실패한다.
 { id: 'garland', name: '리본 가랜드', ... }
 ```
 
-- [ ] **Step 4: 전체 프론트 테스트와 프로덕션 빌드를 검증한다**
+- [x] **Step 4: 전체 프론트 테스트와 프로덕션 빌드를 검증한다**
 
 Run: `node --test frontend/tests/notifications.test.mjs frontend/tests/pre-capacitor-integration.test.mjs frontend/tests/task7-integration.test.mjs`
 

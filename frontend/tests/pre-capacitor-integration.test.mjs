@@ -11,6 +11,7 @@ const report = readFileSync(new URL('../src/components/ReportScreen.jsx', import
 const cameraFlow = readFileSync(new URL('../src/components/CameraFlow.jsx', import.meta.url), 'utf8')
 const camera = readFileSync(new URL('../src/camera.js', import.meta.url), 'utf8')
 const home = readFileSync(new URL('../src/components/HomeScreen.jsx', import.meta.url), 'utf8')
+const shop = readFileSync(new URL('../src/components/ShopScreen.jsx', import.meta.url), 'utf8')
 const api = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8')
 const replacementHistoryUrl = new URL('../src/components/ReplacementHistoryScreen.jsx', import.meta.url)
 const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(replacementHistoryUrl, 'utf8') : ''
@@ -25,6 +26,15 @@ test('신규 설치의 코인은 0에서 시작한다', () => {
   const defaultState = app.match(/const DEFAULT_STATE = \{[\s\S]*?\n\}/)?.[0]
   assert.ok(defaultState)
   assert.match(defaultState, /\bcoins:\s*0\b/)
+})
+
+test('상점 상품명은 오탈자와 낯선 표현을 교정한다', () => {
+  for (const name of ['튤립 화분', '하트 쿠션', '원목 서랍장', '별빛 의자', '리본 가랜드', '민트 스툴']) {
+    assert.match(shop, new RegExp(`name: ['"]${name}['"]`))
+  }
+  for (const name of ['튜립 화분', '하트 쿼션', '원목 서람장', '별빛 오토만', '리본 갈랜드']) {
+    assert.doesNotMatch(shop, new RegExp(`name: ['"]${name}['"]`))
+  }
 })
 
 test('기기 데이터 삭제 API는 204 응답을 JSON으로 읽지 않는다', async () => {
