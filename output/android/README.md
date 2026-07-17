@@ -12,8 +12,8 @@
 | 빌드 유형 | Debug |
 | 최소 Android SDK | 24 |
 | 대상 Android SDK | 36 |
-| 파일 크기 | 80,990,457 bytes |
-| SHA-256 | `254FACBD6CA378733ED3D72D961115C7DFDB986CC9E451466F47070EF6039A4E` |
+| 파일 크기 | 80,990,455 bytes |
+| SHA-256 | `8A86F5330B887D86C6CDBE6CCFF6CF4654DFB5424D6B175D86B7D643D25853EB` |
 | 생성 시각 | 2026-07-17 KST |
 
 이 파일은 현재 작업 공간에서 팀 테스트용으로 복사한 전달물이다.
