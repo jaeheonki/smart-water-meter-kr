@@ -20,6 +20,7 @@ const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(repl
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
+const readmePipeline = readFileSync(new URL('../../docs/assets/yolox-two-stage-pipeline.svg', import.meta.url), 'utf8')
 
 test('앱은 이전 검침을 독립적으로 조회해 입력 화면에 전달한다', () => {
   assert.match(api, /export async function getPreviousReading\(\)/)
@@ -81,7 +82,7 @@ test('루트 README는 주요 기능보다 먼저 YOLOX-s 모델 선택과 2단�
   assert.match(rootReadme, /docs\/yolox-model-pipeline\.md/)
 })
 
-test('루트 README는 상단에 팀원 프로필을 표시하고 자동 검침 흐름의 우측 공간을 확보한다', () => {
+test('루트 README는 상단에 팀원 프로필과 조작 UI 없는 정적 자동 검침 흐름을 표시한다', () => {
   const teamSection = rootReadme.indexOf('## 팀원')
   const modelSection = rootReadme.indexOf('## YOLOX-s 2단계 자동 검침')
 
@@ -93,10 +94,12 @@ test('루트 README는 상단에 팀원 프로필을 표시하고 자동 검침 
     assert.match(rootReadme, new RegExp(`src="https://github\\.com/${githubId}\\.png\\?size=100"`))
   }
 
-  assert.match(rootReadme, /flowchart TB/)
-  assert.match(rootReadme, /subgraph recognition\["1\. 자동 인식"\][\s\S]*direction LR/)
-  assert.match(rootReadme, /subgraph confirmation\["2\. 확인·저장"\][\s\S]*direction RL/)
-  assert.match(rootReadme, /SPACER\["우측 조작 아이콘 여백"\] ~~~ E\["검침값 조합"\]/)
+  assert.match(rootReadme, /docs\/assets\/yolox-two-stage-pipeline\.svg/)
+  assert.doesNotMatch(rootReadme, /```mermaid/)
+  assert.match(readmePipeline, /1\. 자동 인식/)
+  assert.match(readmePipeline, /2\. 확인·저장/)
+  assert.match(readmePipeline, /Model 1[\s\S]*숫자 표시부 검출[\s\S]*Model 2[\s\S]*숫자 0–9 검출/)
+  assert.match(readmePipeline, /검침값 조합[\s\S]*사용자 확인·수정[\s\S]*저장·리포트 계산/)
 })
 
 test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그인을 등록한다', () => {
