@@ -78,6 +78,13 @@ class TodayReadingResponse(BaseModel):
     is_baseline: bool = False
 
 
+class PreviousReadingResponse(BaseModel):
+    """GET /meter/previous 응답."""
+
+    reading_m3: float
+    recorded_at: datetime
+
+
 class HistoryItem(BaseModel):
     """GET /history 응답의 구간 한 줄."""
     start_label: str    # 시작 월 라벨 (예: "2026-05")

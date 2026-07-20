@@ -24,6 +24,7 @@ from src.api.routers.settings import _get_device_id
 from src.api.schemas import (
     ManualRequest,
     ManualResponse,
+    PreviousReadingResponse,
     ScanResponse,
     TodayReadingResponse,
     map_calc_result,
@@ -174,6 +175,23 @@ def post_manual(
         first_reading=False,
         **map_calc_result(result),
     )
+
+
+@router.get("/meter/previous", response_model=Optional[PreviousReadingResponse])
+def get_previous(
+    device_id: str = Depends(_get_device_id),
+    session: Session = Depends(get_session),
+):
+    """한국 날짜 기준 오늘 이전의 마지막 검침을 반환한다."""
+    start, _ = _seoul_day_bounds()
+    return session.exec(
+        select(Reading)
+        .where(
+            Reading.device_id == device_id,
+            Reading.recorded_at < start,
+        )
+        .order_by(Reading.recorded_at.desc())
+    ).first()
 
 
 @router.get("/meter/today", response_model=Optional[TodayReadingResponse])

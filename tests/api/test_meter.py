@@ -18,7 +18,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select
 
 from src.api.models import Reading
-from src.api.routers.meter import post_scan
+from src.api.routers.meter import _seoul_day_bounds, post_scan
 
 
 HEADERS_A = {"X-Device-ID": "device-A"}
@@ -246,6 +246,53 @@ def test_today_empty_returns_null(client):
 
     assert response.status_code == 200
     assert response.json() is None
+
+
+def test_get_previous_excludes_today_and_returns_latest_earlier_reading(client, session):
+    start, _ = _seoul_day_bounds()
+    session.add(Reading(
+        device_id="device-A",
+        reading_m3=225.654,
+        confidence=None,
+        input_mode="manual",
+        recorded_at=start - timedelta(hours=1),
+    ))
+    session.add(Reading(
+        device_id="device-A",
+        reading_m3=225.754,
+        confidence=None,
+        input_mode="manual",
+        recorded_at=start + timedelta(hours=1),
+    ))
+    session.commit()
+
+    response = client.get("/meter/previous", headers=HEADERS_A)
+
+    assert response.status_code == 200
+    assert response.json()["reading_m3"] == 225.654
+    assert response.json()["recorded_at"].startswith(
+        (start - timedelta(hours=1)).isoformat(timespec="seconds")
+    )
+
+
+def test_get_previous_returns_null_without_earlier_reading(client):
+    response = client.get("/meter/previous", headers=HEADERS_A)
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_get_previous_is_device_scoped(client, session):
+    start, _ = _seoul_day_bounds()
+    session.add(Reading(
+        device_id="device-B",
+        reading_m3=999.999,
+        confidence=None,
+        input_mode="manual",
+        recorded_at=start - timedelta(hours=1),
+    ))
+    session.commit()
+
+    assert client.get("/meter/previous", headers=HEADERS_A).json() is None
 
 
 def test_manual_rejects_second_reading_on_same_seoul_day(client, session):
