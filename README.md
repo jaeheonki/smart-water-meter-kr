@@ -51,7 +51,7 @@
 방울이의 핵심은 수도 계량기 사진에서 숫자 표시부를 찾고 검침값을 자동으로 읽는 YOLOX-s 기반 파이프라인이다. 프론트엔드는 촬영 이미지를 FastAPI로 보내며, 서버가 두 개의 YOLOX-s 모델을 순서대로 실행한다.
 
 <p align="center">
-  <img src="docs/assets/yolox-two-stage-pipeline.svg" width="100%" alt="YOLOX-s 2단계 자동 검침 흐름">
+  <img src=".github/assets/readme/yolox-two-stage-pipeline.svg" width="100%" alt="YOLOX-s 2단계 자동 검침 흐름">
 </p>
 
 ### 모델 실험과 선택
@@ -80,21 +80,21 @@
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/assets/device-e2e/home.png" width="240" alt="방울이 홈과 꾸미기"><br>
+      <img src=".github/assets/readme/device-e2e/home.png" width="240" alt="방울이 홈과 꾸미기"><br>
       <sub><b>방울이 홈</b><br>검침 상태, 연속 기록, 코인과 꾸미기</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/assets/device-e2e/manual-reading.png" width="240" alt="이전 검침을 안내하는 직접 입력"><br>
+      <img src=".github/assets/readme/device-e2e/manual-reading.png" width="240" alt="이전 검침을 안내하는 직접 입력"><br>
       <sub><b>검침값 확인·수정</b><br>이전 검침 안내와 수동 입력</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/assets/device-e2e/water-ledger.png" width="240" alt="날짜별 물 가계부"><br>
+      <img src=".github/assets/readme/device-e2e/water-ledger.png" width="240" alt="날짜별 물 가계부"><br>
       <sub><b>물 가계부</b><br>날짜별 사용량, 목표와 검침 이력</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/assets/device-e2e/energy-report.png" width="240" alt="에너지와 탄소 리포트"><br>
+      <img src=".github/assets/readme/device-e2e/energy-report.png" width="240" alt="에너지와 탄소 리포트"><br>
       <sub><b>에너지 리포트</b><br>물 사용의 에너지·탄소 환산</sub>
     </td>
   </tr>
@@ -154,7 +154,7 @@ tests/                  Python API·도메인 테스트
 frontend/               React UI, Node 테스트, Capacitor Android
 data/                   로컬 SQLite 데이터, Git 제외
 weights/                표시부·숫자 YOLOX-s ONNX 가중치
-docs/                   프론트 인수인계, API와 EC2 배포 문서
+docs/                   최종 보고서, 모델·프론트·API·EC2 문서
 output/                 팀 확인용 빌드 산출물 안내
 ```
 
@@ -184,9 +184,9 @@ iOS는 현재 빌드 산출물이 없다. 기존 React UI를 재사용할 수 �
 
 ## 문서
 
+- [방울이 프로젝트 최종 보고서](docs/banguli-final-report.pdf).
 - [YOLOX 모델 선정과 검침 파이프라인](docs/yolox-model-pipeline.md).
 - [프론트엔드 연동 인수인계](docs/frontend-integration-handoff.md).
-- [프론트엔드 연동 인수인계 PDF](docs/banguli-frontend-integration.pdf).
 - [API 사용 가이드](docs/api-guide.md).
 - [EC2 Docker 배포 가이드](docs/deployment-guide.md).
 

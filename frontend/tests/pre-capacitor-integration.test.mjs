@@ -20,7 +20,7 @@ const replacementHistory = existsSync(replacementHistoryUrl) ? readFileSync(repl
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
-const readmePipeline = readFileSync(new URL('../../docs/assets/yolox-two-stage-pipeline.svg', import.meta.url), 'utf8')
+const readmePipeline = readFileSync(new URL('../../.github/assets/readme/yolox-two-stage-pipeline.svg', import.meta.url), 'utf8')
 
 test('앱은 이전 검침을 독립적으로 조회해 입력 화면에 전달한다', () => {
   assert.match(api, /export async function getPreviousReading\(\)/)
@@ -94,12 +94,17 @@ test('루트 README는 상단에 팀원 프로필과 조작 UI 없는 정적 자
     assert.match(rootReadme, new RegExp(`src="https://github\\.com/${githubId}\\.png\\?size=100"`))
   }
 
-  assert.match(rootReadme, /docs\/assets\/yolox-two-stage-pipeline\.svg/)
+  assert.match(rootReadme, /\.github\/assets\/readme\/yolox-two-stage-pipeline\.svg/)
   assert.doesNotMatch(rootReadme, /```mermaid/)
   assert.match(readmePipeline, /1\. 자동 인식/)
   assert.match(readmePipeline, /2\. 확인·저장/)
   assert.match(readmePipeline, /Model 1[\s\S]*숫자 표시부 검출[\s\S]*Model 2[\s\S]*숫자 0–9 검출/)
   assert.match(readmePipeline, /검침값 조합[\s\S]*사용자 확인·수정[\s\S]*저장·리포트 계산/)
+})
+
+test('루트 README는 최종 보고서를 안내하고 중복된 이전 PDF를 참조하지 않는다', () => {
+  assert.match(rootReadme, /docs\/banguli-final-report\.pdf/)
+  assert.doesNotMatch(rootReadme, /docs\/banguli-frontend-integration\.pdf/)
 })
 
 test('Android 인앱 미리보기는 CAMERA 권한과 Camera Preview 플러그인을 등록한다', () => {

@@ -1,4 +1,5 @@
 *.bat text eol=crlf
 *.gradle text eol=lf
 *.properties text eol=lf
+*.pdf binary
 gradlew text eol=lf
