@@ -26,7 +26,7 @@ Android APK의 버전, 해시, 설치 방법과 검증 범위는 [Android 테스
 
 | 플랫폼 | 경로 | 상태 |
 |---|---|---|
-| Android | `output/android/` | Debug APK 존재, 에뮬레이터 기본 흐름 검증 완료, 실기기 E2E 미완료 |
+| Android | `output/android/` | Debug APK 존재, 에뮬레이터와 Galaxy 실기기 핵심 E2E 검증 완료 |
 | iOS | `output/ios/` | 디렉터리와 산출물 없음 |
 
 iOS 빌드를 시작하면 검증된 `.ipa` 또는 TestFlight 전달 정보를 `output/ios/` 아래에 분리한다. 현재는 생성하지 않는다.
