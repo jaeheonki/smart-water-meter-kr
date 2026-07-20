@@ -10,7 +10,7 @@ Android appId `com.jjang.banguli`
 
 프론트 연결과 운영 접점을 중심으로 설명한다. 요금 계산 공식과 YOLOX 내부 구현은 각각 `src/calculation/`, `src/model/`을 참고한다. API의 필드별 계약은 [API 가이드](api-guide.md), EC2 명령의 기준은 [배포 가이드](deployment-guide.md)를 따른다.
 
-현재 완료된 범위는 웹 전체 흐름, 운영 API 연결, Android 에뮬레이터 기본 흐름과 Debug APK 빌드다. Android 실기기 카메라 권한·촬영과 로컬 알림 수신·탭 이동은 아직 검증하지 않았다.
+현재 완료된 범위는 웹 전체 흐름, 운영 API 연결, Debug APK 빌드와 Android 에뮬레이터·Galaxy 실기기의 핵심 E2E다. 실기기에서는 카메라 촬영, 인식값 확인·수정, 저장, 물 가계부와 에너지 리포트 반영까지 확인했다. 로컬 알림 수신과 탭 이동은 아직 실기기에서 검증하지 않았다.
 
 ## 2. 저장소 구조
 
@@ -26,10 +26,11 @@ smart_water_meter/
 │  ├─ capacitor.config.json
 │  └─ package.json
 ├─ docs/
+│  ├─ banguli-final-report.pdf   # 프로젝트 최종 보고서
+│  ├─ yolox-model-pipeline.md
 │  ├─ frontend-integration-handoff.md
 │  ├─ api-guide.md
-│  ├─ deployment-guide.md
-│  └─ banguli-frontend-integration.pdf
+│  └─ deployment-guide.md
 ├─ output/
 │  └─ android/
 │     ├─ README.md
@@ -318,7 +319,7 @@ npx cap sync android
 .\gradlew.bat assembleDebug
 ```
 
-2026-07-17 정리 시작 전 기준선은 pytest 42건과 Node 테스트 59건이 모두 통과했다. Vite 빌드, Capacitor 동기화와 Gradle Debug 빌드도 통과한 상태에서 정리를 시작했다. 최종 산출물 생성 후 같은 명령을 다시 실행한다.
+2026-07-17 정리 시작 전 기준선은 pytest 42건과 Node 테스트 59건이 모두 통과했다. Vite 빌드, Capacitor 동기화와 Gradle Debug 빌드도 통과한 상태에서 정리를 시작했다. 최종 산출물 생성 뒤 다시 실행한 결과는 pytest 56건, Node 테스트 89건 통과다.
 
 에뮬레이터에서 앱 데이터 초기화 후 다음을 확인했다.
 
@@ -328,15 +329,15 @@ npx cap sync android
 - localStorage의 `onboarded`, `region`, `regionSet`, `device_id` 유지.
 - Capacitor가 HTTP `localhost`에서 WebView 자산을 로드하고 Camera·Local Notifications 플러그인을 등록.
 
-## 10. 남은 검증과 머지 전 확인
+## 10. 남은 검증
 
-- Android 실기기에서 시스템 카메라 열기와 실제 계량기 사진 촬영.
-- 실기기에서 모델 인식 결과 확인, 수동 입력 폴백과 저장.
+Galaxy 실기기에서 시스템 카메라 열기와 계량기 촬영, 모델 인식 결과 확인과 수동 입력 폴백, 하루 한 번 신규 저장과 당일 기록 수정, 물 가계부·에너지 리포트 반영, 앱 완전 종료 후 재실행 시 같은 기기 데이터로 홈 복귀까지 확인했다. 항목별 결과는 `output/android/README.md`와 최종 보고서에 정리돼 있다.
+
+다음 항목은 아직 확인하지 않았다.
+
 - 실기기에서 알림 권한 허용·거부, 지정 시각 수신과 탭 후 검침 화면 이동.
-- 실기기에서 앱 재실행 후 같은 `device_id`와 이력 유지.
 - 실제 iPhone 사진의 HEIC 업로드 호환성 확인.
-- 2026-07-17 사용자 승인에 따라 에뮬레이터 검증본을 `dev`에 통합한다. Android 실기기 카메라·알림 E2E는 후속 검증으로 유지하며, 완료 전까지 Task 9의 원래 완료 기준은 체크하지 않는다.
-- `dev` 머지는 사용자와 팀의 승인 전에는 수행하지 않는다.
+- HTTPS 운영 API 전환 후 Android 네트워크 보안 설정 재검증.
 
 ## 11. 정리 결정
 
