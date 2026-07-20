@@ -50,25 +50,9 @@
 
 방울이의 핵심은 수도 계량기 사진에서 숫자 표시부를 찾고 검침값을 자동으로 읽는 YOLOX-s 기반 파이프라인이다. 프론트엔드는 촬영 이미지를 FastAPI로 보내며, 서버가 두 개의 YOLOX-s 모델을 순서대로 실행한다.
 
-```mermaid
-flowchart TB
-    subgraph recognition["1. 자동 인식"]
-        direction LR
-        A["계량기 사진"] --> B["Model 1<br>숫자 표시부 검출"]
-        B --> C["표시부 자르기·회전"]
-        C --> D["Model 2<br>숫자 0~9 검출"]
-    end
-
-    subgraph confirmation["2. 확인·저장"]
-        direction RL
-        SPACER["우측 조작 아이콘 여백"] ~~~ E["검침값 조합"]
-        E --> F["사용자 확인·수정"]
-        F --> G["저장·리포트 계산"]
-    end
-
-    recognition --> confirmation
-    style SPACER fill:transparent,stroke:transparent,color:transparent
-```
+<p align="center">
+  <img src="docs/assets/yolox-two-stage-pipeline.svg" width="100%" alt="YOLOX-s 2단계 자동 검침 흐름">
+</p>
 
 ### 모델 실험과 선택
 
@@ -91,6 +75,33 @@ flowchart TB
 - 매일 검침 알림, 글자 크기와 현재 기기 데이터 초기화 설정.
 - 나무코인으로 방울이 옷과 방을 꾸미는 리워드 UI.
 
+### Galaxy 실기기 실행 화면
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/assets/device-e2e/home.png" width="240" alt="방울이 홈과 꾸미기"><br>
+      <sub><b>방울이 홈</b><br>검침 상태, 연속 기록, 코인과 꾸미기</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/assets/device-e2e/manual-reading.png" width="240" alt="이전 검침을 안내하는 직접 입력"><br>
+      <sub><b>검침값 확인·수정</b><br>이전 검침 안내와 수동 입력</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/assets/device-e2e/water-ledger.png" width="240" alt="날짜별 물 가계부"><br>
+      <sub><b>물 가계부</b><br>날짜별 사용량, 목표와 검침 이력</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/assets/device-e2e/energy-report.png" width="240" alt="에너지와 탄소 리포트"><br>
+      <sub><b>에너지 리포트</b><br>물 사용의 에너지·탄소 환산</sub>
+    </td>
+  </tr>
+</table>
+
+위 화면은 Galaxy 실기기 E2E에서 확인한 테스트 데이터다.
+
 ## 기술 구성
 
 | 영역 | 구성 | 역할 |
@@ -104,7 +115,17 @@ flowchart TB
 
 ## 빠른 시작
 
-### 백엔드
+### Android 앱 설치
+
+1. [GitHub Releases](https://github.com/jaeheonki/smart-water-meter-kr/releases)에서 최신 `banguli-v1.0.apk`를 내려받는다.
+2. Android 기기에서 APK를 열고, 요청될 경우 해당 브라우저나 파일 앱의 `알 수 없는 앱 설치`를 허용한다.
+3. 방울이를 실행하고 카메라 권한을 허용한다.
+
+현재 저장소의 APK는 Galaxy 실기기 핵심 E2E를 통과한 기능 검증 최종본이다. Play 스토어 배포용 서명본은 아니며, 최종 PDF와 `main` 병합 후 GitHub Release에 게시한다.
+
+### 개발 환경 실행
+
+#### 백엔드
 
 ```powershell
 uv sync
@@ -113,7 +134,7 @@ uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 Swagger UI는 `http://localhost:8000/docs`에서 확인한다.
 
-### 프론트엔드
+#### 프론트엔드
 
 Node.js 22 이상을 사용한다.
 
@@ -153,7 +174,7 @@ npm run build
 
 ## 모바일 앱
 
-Android 앱 ID는 `com.jjang.banguli`다. 현재 Debug APK는 에뮬레이터 기본 흐름까지 검증됐으며 실제 기기의 카메라·알림 E2E는 남아 있다.
+Android 앱 ID는 `com.jjang.banguli`다. 현재 Debug APK는 에뮬레이터와 Galaxy 실기기에서 카메라 촬영, 인식값 확인·수정, 저장, 물 가계부와 에너지 리포트까지 핵심 E2E를 검증했다.
 
 - [프론트엔드와 Capacitor 개발 안내](frontend/README.md).
 - [빌드 산출물 안내](output/README.md).

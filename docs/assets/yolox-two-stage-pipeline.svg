@@ -1,0 +1,58 @@
+<!-- README의 YOLOX 2단계 자동 검침 흐름도 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="500" viewBox="0 0 1400 500" role="img" aria-labelledby="title desc">
+  <title id="title">YOLOX-s 2단계 자동 검침 흐름</title>
+  <desc id="desc">계량기 사진에서 숫자 표시부와 숫자를 검출한 뒤 사용자가 확인하고 저장하는 과정</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#b8c4ce"/>
+    </marker>
+    <style>
+      .stage { fill: #31363b; stroke: #5f6a73; stroke-width: 2; }
+      .box { fill: #171b20; stroke: #b8c4ce; stroke-width: 2; rx: 10; }
+      .stage-title { fill: #f5f7fa; font: 700 24px sans-serif; }
+      .label { fill: #f5f7fa; font: 22px sans-serif; text-anchor: middle; }
+      .sub { fill: #9fd8ff; font: italic 20px sans-serif; text-anchor: middle; }
+      .arrow { fill: none; stroke: #b8c4ce; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1400" height="500" rx="18" fill="#0d1117"/>
+
+  <rect class="stage" x="40" y="35" width="1320" height="195" rx="14"/>
+  <text class="stage-title" x="700" y="70" text-anchor="middle">1. 자동 인식</text>
+
+  <rect class="box" x="90" y="100" width="230" height="90"/>
+  <text class="label" x="205" y="154">계량기 사진</text>
+
+  <rect class="box" x="400" y="90" width="260" height="110"/>
+  <text class="sub" x="530" y="132">Model 1</text>
+  <text class="label" x="530" y="169">숫자 표시부 검출</text>
+
+  <rect class="box" x="740" y="100" width="260" height="90"/>
+  <text class="label" x="870" y="154">표시부 자르기·회전</text>
+
+  <rect class="box" x="1080" y="90" width="240" height="110"/>
+  <text class="sub" x="1200" y="132">Model 2</text>
+  <text class="label" x="1200" y="169">숫자 0–9 검출</text>
+
+  <path class="arrow" d="M320 145 H390"/>
+  <path class="arrow" d="M660 145 H730"/>
+  <path class="arrow" d="M1000 145 H1070"/>
+
+  <path class="arrow" d="M1200 200 V257 H1090"/>
+
+  <rect class="stage" x="40" y="270" width="1320" height="195" rx="14"/>
+  <text class="stage-title" x="700" y="305" text-anchor="middle">2. 확인·저장</text>
+
+  <rect class="box" x="910" y="335" width="270" height="90"/>
+  <text class="label" x="1045" y="389">검침값 조합</text>
+
+  <rect class="box" x="565" y="335" width="270" height="90"/>
+  <text class="label" x="700" y="389">사용자 확인·수정</text>
+
+  <rect class="box" x="220" y="335" width="270" height="90"/>
+  <text class="label" x="355" y="389">저장·리포트 계산</text>
+
+  <path class="arrow" d="M910 380 H845"/>
+  <path class="arrow" d="M565 380 H500"/>
+</svg>
