@@ -13,8 +13,8 @@
 | 최소 Android SDK | 24 |
 | 대상 Android SDK | 36 |
 | 파일 크기 | 90,763,539 bytes |
-| SHA-256 | `C026640088BAF9D2285EAAC719C9FD2C7FAFA654647C3603043F00C5416EE20B` |
-| 생성 시각 | 2026-07-17 KST |
+| SHA-256 | `FE030BA8E494362B6FADD8120E9F4490DDA3834795D9AE37980405A1D7459503` |
+| 생성 시각 | 2026-07-20 KST |
 
 이 파일은 현재 작업 공간에서 팀 테스트용으로 복사한 전달물이다.
 
@@ -55,6 +55,7 @@ Gradle 원본은 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`에
 - Vite 운영 번들과 Capacitor Android 동기화 성공.
 - Camera Preview 8.0.1, Camera 8.2.1과 Local Notifications 8.0.0 플러그인 등록.
 - Gradle `assembleDebug` 성공.
+- 가계부의 UTC 검침 시각을 서울 날짜로 표시하고 직접 입력·사진 확인 화면에 실제 이전 검침을 안내.
 - package `com.jjang.banguli`, minSdk 24, targetSdk 36 확인.
 - 에뮬레이터 신규 상태에서 코인 0 확인.
 - 에뮬레이터에서 온보딩, 서울 지역 운영 API 저장과 홈 진입 확인.
