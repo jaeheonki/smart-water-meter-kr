@@ -50,6 +50,10 @@ export async function getTodayReading() {
   return request("/meter/today");
 }
 
+export async function getPreviousReading() {
+  return request('/meter/previous')
+}
+
 export async function updateTodayReading({ reading_m3, confidence = null, input_mode, reset_baseline = false }) {
   return request("/meter/today", {
     method: "PUT",

@@ -4,6 +4,7 @@ import BG from '../mockData.js'
 import { cameraPreviewController, getPhoto, isPhotoCancelled } from '../camera.js'
 import { scanMeter, saveReading, updateTodayReading, ApiError } from '../api.js'
 import { persistReading } from '../readingSave.js'
+import { formatPreviousReading } from '../readingContext.js'
 import { BGC, MIcon, Card, PrimaryBtn, GhostBtn, SectionLabel, WaterBar, Chip } from './ui.jsx'
 
 function MeterFace({ digits, scale = 1 }) {
@@ -66,7 +67,7 @@ function DialCol({ val, red, flagged, onChange }) {
   );
 }
 
-function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadingSaved, onDone }) {
+function CameraFlow({ scenario, goal, startStep, todayReading, previousReading, onClose, onReadingSaved, onDone }) {
   const sc = BG.SCENARIOS[scenario];
   const initialReading = todayReading
     ? Math.round(todayReading.reading_m3 * 1000).toString().padStart(7, '0').slice(-7)
@@ -84,6 +85,7 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
   const [capturing, setCapturing] = useState(false);
   const [scanFile, setScanFile] = useState(null);
   const [scanPreviewUrl, setScanPreviewUrl] = useState('');
+  const previousReadingText = formatPreviousReading(previousReading);
   const flaggedIdx = 4;
   const nativePreview = cameraPreviewController.isAvailable();
 
@@ -402,6 +404,9 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 20 }}>
           <Card style={{ marginTop: 0 }}>
             <SectionLabel icon="tune">검침 숫자를 입력하세요</SectionLabel>
+            <div style={{ margin: '-2px 0 12px', textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: BGC.sub }}>
+              {previousReadingText}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
               {digits.map((d, i) => (
                 <React.Fragment key={i}>
@@ -456,7 +461,7 @@ function CameraFlow({ scenario, goal, startStep, todayReading, onClose, onReadin
               <div className="jua" style={{ fontSize: 21, marginTop: 4 }}>
                 {digits.slice(0, 4).join('')}<span style={{ color: '#FF9C92' }}>.{digits.slice(4).join('')}</span> ㎥
               </div>
-              <div style={{ fontSize: 11.5, opacity: 0.65, marginTop: 4 }}>어제 검침 0234.412 ㎥</div>
+              <div style={{ fontSize: 11.5, opacity: 0.65, marginTop: 4 }}>{previousReadingText}</div>
             </div>
           </Card>
 

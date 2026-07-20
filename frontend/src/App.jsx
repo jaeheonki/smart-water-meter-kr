@@ -9,7 +9,7 @@ import LedgerScreen from './components/LedgerScreen.jsx'
 import ReportScreen from './components/ReportScreen.jsx'
 import ShopScreen, { SHOP_ITEMS, wornImgFor, spriteFor, framesFor, facesFor } from './components/ShopScreen.jsx'
 import SettingsScreen, { AttendanceModal, RegionModal } from './components/SettingsScreen.jsx'
-import { deleteDeviceData, getHistory, getTodayReading, saveSettings } from './api.js'
+import { deleteDeviceData, getHistory, getPreviousReading, getTodayReading, saveSettings } from './api.js'
 import { getRegionCode } from './regions.js'
 import { notificationService, localDateKeyFromUtcTimestamp } from './notifications.js'
 import { calculateReadingStreak } from './readingHistory.js'
@@ -42,6 +42,7 @@ function App() {
   const [savingInitialRegion, setSavingInitialRegion] = useState(false)
   const [initialRegionError, setInitialRegionError] = useState(false)
   const [todayReading, setTodayReading] = useState(null)
+  const [previousReading, setPreviousReading] = useState(null)
   const [streak, setStreak] = useState(0)
 
   useEffect(() => {
@@ -51,9 +52,14 @@ function App() {
   useEffect(() => { localStorage.setItem(STORE_KEY, JSON.stringify(st)) }, [st])
   useEffect(() => {
     let active = true
-    void Promise.all([getTodayReading(), getHistory()]).then(([todayReading, history]) => {
+    void Promise.all([
+      getTodayReading(),
+      getPreviousReading().catch(() => null),
+      getHistory(),
+    ]).then(([todayReading, previousReading, history]) => {
       if (!active) return
       setTodayReading(todayReading)
+      setPreviousReading(previousReading)
       setStreak(calculateReadingStreak(history, todayReading))
       patch({
         recorded: Boolean(todayReading),
@@ -168,6 +174,7 @@ function App() {
     setShowAttend(false)
     setSt({ ...DEFAULT_STATE })
     setTodayReading(null)
+    setPreviousReading(null)
     setStreak(0)
   }
 
@@ -186,7 +193,7 @@ function App() {
     content = <Onboarding onDone={(house) => patch({ onboarded: true, house, screen: 'home' })} />
   } else if (st.screen === 'camera') {
     content = (
-      <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'} todayReading={todayReading}
+      <CameraFlow scenario={scenario} goal={goal} startStep={st.camStart || 'view'} todayReading={todayReading} previousReading={previousReading}
         onClose={() => patch({ screen: 'home', camStart: null })}
         onReadingSaved={recordReading}
         onDone={completeReading}

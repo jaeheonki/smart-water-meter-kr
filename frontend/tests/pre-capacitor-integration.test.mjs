@@ -21,6 +21,21 @@ const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.me
 const androidManifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8')
 const rootReadme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
 
+test('앱은 이전 검침을 독립적으로 조회해 입력 화면에 전달한다', () => {
+  assert.match(api, /export async function getPreviousReading\(\)/)
+  assert.match(api, /request\(["']\/meter\/previous["']\)/)
+  assert.match(app, /getPreviousReading\(\)\.catch\(\(\) => null\)/)
+  assert.match(app, /const \[previousReading, setPreviousReading\] = useState\(null\)/)
+  assert.match(app, /<CameraFlow[\s\S]*previousReading=\{previousReading\}/)
+  assert.match(cameraFlow, /function CameraFlow\(\{[\s\S]*previousReading[\s\S]*\}\)/)
+})
+
+test('직접 입력과 사진 확인은 실제 이전 검침 안내를 공유한다', () => {
+  assert.match(cameraFlow, /formatPreviousReading\(previousReading\)/)
+  assert.ok((cameraFlow.match(/\{previousReadingText\}/g) || []).length >= 2)
+  assert.doesNotMatch(cameraFlow, /어제 검침 0234\.412/)
+})
+
 test('앱 재실행은 저장된 이전 탭과 관계없이 홈에서 시작한다', () => {
   const source = app.match(/function loadState\(\) \{[\s\S]*?\n\}/)?.[0]
   assert.ok(source)
@@ -146,7 +161,7 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
   const serverDelete = new Promise((resolve) => { finishServerDelete = resolve })
   const createReset = new Function(
     'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
-    'setShowAttend', 'setSt', 'setTodayReading', 'setStreak', 'DEFAULT_STATE',
+    'setShowAttend', 'setSt', 'setTodayReading', 'setPreviousReading', 'setStreak', 'DEFAULT_STATE',
     `return (${resetSource})`,
   )
   const reset = createReset(
@@ -157,6 +172,7 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
     () => { events.push('attendance') },
     () => { events.push('state') },
     () => { events.push('today') },
+    () => { events.push('previous') },
     () => { events.push('streak') },
     { onboarded: false },
   )
@@ -167,7 +183,7 @@ test('전체 앱 초기화는 서버와 알림 삭제 성공 뒤에만 로컬 �
   finishServerDelete()
   await pending
   assert.deepEqual(events, [
-    'server', 'notifications', 'remove:banguli_app_v1', 'remove:device_id', 'attendance', 'state', 'today', 'streak',
+    'server', 'notifications', 'remove:banguli_app_v1', 'remove:device_id', 'attendance', 'state', 'today', 'previous', 'streak',
   ])
 })
 
@@ -176,7 +192,7 @@ test('전체 앱 초기화 실패는 로컬 상태를 보존해 다시 시도할
   assert.ok(resetSource)
   const createReset = new Function(
     'deleteDeviceData', 'notificationService', 'localStorage', 'STORE_KEY',
-    'setShowAttend', 'setSt', 'setTodayReading', 'setStreak', 'DEFAULT_STATE',
+    'setShowAttend', 'setSt', 'setTodayReading', 'setPreviousReading', 'setStreak', 'DEFAULT_STATE',
     `return (${resetSource})`,
   )
 
@@ -190,6 +206,7 @@ test('전체 앱 초기화 실패는 로컬 상태를 보존해 다시 시도할
       () => { localEffects.push('attendance') },
       () => { localEffects.push('state') },
       () => { localEffects.push('today') },
+      () => { localEffects.push('previous') },
       () => { localEffects.push('streak') },
       { onboarded: false },
     )
@@ -267,7 +284,7 @@ test('알림 시각 재시도 성공은 실패 당시 시각으로 로컬 입력
 
 test('검침 저장 성공 직후 일반 저장과 baseline 저장 모두 recorded_at을 App에 전달한다', () => {
   assert.match(app, /import\s+\{\s*notificationService\s*,\s*localDateKeyFromUtcTimestamp\s*\}\s+from\s+['"]\.\/notifications\.js['"]/)
-  assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, todayReading, onClose, onReadingSaved, onDone \}\)/)
+  assert.match(cameraFlow, /function CameraFlow\(\{ scenario, goal, startStep, todayReading, previousReading, onClose, onReadingSaved, onDone \}\)/)
   assert.equal(cameraFlow.match(/onReadingSaved\(result\)/g)?.length, 2)
   assert.equal(cameraFlow.match(/const \{ result \} = await persistReading\(/g)?.length, 2)
   assert.match(cameraFlow, /const confirmReading[\s\S]*await persistReading\([\s\S]*onReadingSaved\(result\)[\s\S]*setStep\(['"]done['"]\)/)
@@ -539,7 +556,7 @@ test('연속 기록은 목 데이터가 아니라 실제 검침 날짜의 연속
 test('앱 시작 시 오늘 기록과 실제 이력을 조회하고 고정 13일 값을 사용하지 않는다', () => {
   assert.match(api, /export async function getTodayReading\(\)/)
   assert.match(api, /export async function updateTodayReading/)
-  assert.match(app, /Promise\.all\(\[getTodayReading\(\), getHistory\(\)\]\)/)
+  assert.match(app, /getTodayReading\(\),[\s\S]*getPreviousReading\(\)\.catch\(\(\) => null\),[\s\S]*getHistory\(\),/)
   assert.match(app, /calculateReadingStreak\(history, todayReading\)/)
   assert.doesNotMatch(app, /BG\.STREAK/)
 })
