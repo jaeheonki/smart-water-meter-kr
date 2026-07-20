@@ -55,6 +55,30 @@ def test_history_two_readings(client, session):
     assert items[0]["co2_kg"] > 0
 
 
+def test_history_labels_use_seoul_dates_across_day_month_and_year(client, session):
+    rows = [
+        (1000.0, datetime(2026, 7, 19, 16, 0)),
+        (1001.0, datetime(2026, 7, 31, 16, 0)),
+        (1002.0, datetime(2026, 12, 31, 16, 0)),
+    ]
+    for reading_m3, recorded_at in rows:
+        session.add(Reading(
+            device_id="device-A",
+            reading_m3=reading_m3,
+            confidence=None,
+            input_mode="manual",
+            recorded_at=recorded_at,
+        ))
+    session.commit()
+
+    items = client.get("/history", headers=HEADERS_A).json()
+
+    assert [(item["start_label"], item["end_label"]) for item in reversed(items)] == [
+        ("2026-07-20", "2026-08-01"),
+        ("2026-08-01", "2027-01-01"),
+    ]
+
+
 def test_history_most_recent_first(client, session):
     """3개 검침 → 2개 구간, 최신 구간이 먼저."""
     _r(session, "device-A", 1000.0, 2026, 1)

@@ -6,6 +6,8 @@
 #   → [{"시작_라벨", "끝_라벨", "사용량_㎥", "요금", "영향"}, ...]
 #   → HistoryItem 변환 → 최신순 정렬 → 필요 시 기간 필터
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
 
@@ -16,6 +18,14 @@ from src.api.schemas import HistoryItem, ReplacementHistoryItem
 from src.calculation import calc_history
 
 router = APIRouter()
+SEOUL = timezone(timedelta(hours=9))
+
+
+def _seoul_date_label(recorded_at: datetime) -> str:
+    utc_time = recorded_at
+    if utc_time.tzinfo is None:
+        utc_time = utc_time.replace(tzinfo=timezone.utc)
+    return utc_time.astimezone(SEOUL).date().isoformat()
 
 
 def _compute(session: Session, device_id: str) -> list[HistoryItem]:
@@ -40,8 +50,8 @@ def _compute(session: Session, device_id: str) -> list[HistoryItem]:
         if current.is_baseline or current.reading_m3 <= prev.reading_m3:
             continue
         labeled = [
-            (prev.recorded_at.strftime("%Y-%m-%d"), prev.reading_m3),
-            (current.recorded_at.strftime("%Y-%m-%d"), current.reading_m3),
+            (_seoul_date_label(prev.recorded_at), prev.reading_m3),
+            (_seoul_date_label(current.recorded_at), current.reading_m3),
         ]
         periods.extend(calc_history(region, labeled))
 
