@@ -15,6 +15,21 @@
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" alt="Capacitor 8">
 </p>
 
+## 김재헌의 기여
+
+**담당 범위** · PM, 검침 모델 비교·선정, ONNX 변환·EC2 배포, 앱 연동과 실기기 검증.
+
+- 팀과 계량기 사진을 수집하고 검출 성능·라이선스·ONNX 변환 가능 여부를 검토해 YOLOX-s를 선택했습니다. 사진 200장은 팀 전체 수집량입니다.
+- 표시부와 숫자를 순서대로 탐지하는 모델을 ONNX Runtime·FastAPI 서버에 연결하고 EC2에 배포했습니다. 서버·앱 연동과 동시 추론 요청 대응은 AI의 도움을 받아 구현했습니다.
+- Galaxy에서 촬영, 인식값 확인·수정, 저장과 리포트 반영을 확인하고 Android 테스트 APK를 제작·배포했습니다. 당시 기능 검증 범위이며 외부 사용자 대상 성능 평가를 뜻하지 않습니다.
+
+| 담당 작업 관련 코드 | 결과 자료 |
+| --- | --- |
+| [2단계 인식 파이프라인](src/model/pipeline.py) · [표시부 검출](src/model/detector.py) · [숫자 검출](src/model/digit_detector.py) | [모델 비교·선정 근거](docs/yolox-model-pipeline.md) · [EC2 배포 문서](docs/deployment-guide.md) · [최종 보고서](docs/banguli-final-report.pdf) · [테스트 APK](https://github.com/jaeheonki/smart-water-meter-kr/releases) |
+
+---
+
+
 ## 팀원
 
 <table>
